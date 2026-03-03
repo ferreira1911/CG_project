@@ -1,5 +1,10 @@
-import { CGFscene, CGFcamera, CGFaxis, CGFtexture, CGFappearance, } from "../lib/CGF.js";
-import { MyFEUP } from "./MyFEUP.js";
+import { CGFscene, CGFcamera, CGFaxis } from "../lib/CGF.js";
+import { MyDiamond } from "./MyDiamond.js";
+import { MyTriangle } from "./MyTriangle.js";
+import { MyParallelogram } from "./MyParallelogram.js";
+import { MyTriangleSmall } from "./MyTriangleSmall.js";
+import { MyTriangleBig } from "./MyTriangleBig.js";
+import { MyTangram } from "./MyTangram.js";
 
 /**
  * MyScene
@@ -22,29 +27,22 @@ export class MyScene extends CGFscene {
     this.gl.enable(this.gl.DEPTH_TEST);
     this.gl.enable(this.gl.CULL_FACE);
     this.gl.depthFunc(this.gl.LEQUAL);
-    this.enableTextures(true);
-
 
     //Initialize scene objects
     this.axis = new CGFaxis(this);
-    this.feup = new MyFEUP(this);
+    this.diamond = new MyDiamond(this);
+    this.triangle = new MyTriangle(this);
+    this.parallelogram = new MyParallelogram(this);
+    this.triangleSmall  = new MyTriangleSmall(this);
+    this.triangleBig = new MyTriangleBig(this);
+    this.tangram = new MyTangram(this);
 
     //Objects connected to MyInterface
     this.displayAxis = true;
-    this.scaleFactor = 1.0;
-    this.translateX = 0.0;
-    this.translateY = 0.0;
-    this.translateZ = 0.0;
-    this.rotateZ = 0.0;
-    this.rotateY = 0.0;
-    this.rotateX = 0.0;
-
-    // textures
-    this.materialFEUP = new CGFappearance(this);
-    this.materialFEUP.setAmbient(0.5, 0.5, 0.5, 1);
-    this.materialFEUP.setDiffuse(0.7, 0.7, 0.7, 1);
-    this.materialFEUP.loadTexture('feup.jpg');
-    this.materialFEUP.setTextureWrap('REPEAT', 'REPEAT');
+    this.scaleFactor = 1;
+    this.displayTriangle = true;
+    this.displayDiamond = true;
+    this.displayParallelogram = true;
   }
   initLights() {
     this.lights[0].setPosition(15, 2, 5, 1);
@@ -81,34 +79,37 @@ export class MyScene extends CGFscene {
     // Draw axis
     if (this.displayAxis) this.axis.display();
 
+    
+
     this.setDefaultAppearance();
 
     var sca = [
-      this.scaleFactor, 0.0,              0.0,              0.0,
-      0.0,              this.scaleFactor,  0.0,              0.0,
-      0.0,              0.0,              this.scaleFactor,  0.0,
-      0.0,              0.0,              0.0,              1.0,
+      this.scaleFactor,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      this.scaleFactor,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      this.scaleFactor,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
     ];
 
-    var trans = [
-      1.0,             0.0,             0.0,             0.0,
-      0.0,             1.0,             0.0,             0.0,
-      0.0,             0.0,             1.0,             0.0,
-      this.translateX,  this.translateY,  this.translateZ,  1.0,
-    ];
     
-    this.multMatrix(trans);
-    this.rotate(Math.PI*this.rotateX/180.0, 1, 0, 0);
-    this.rotate(Math.PI*this.rotateY/180.0, 0, 1, 0);
-    this.rotate(Math.PI*this.rotateZ/180.0, 0, 0, 1);
+
     this.multMatrix(sca);
+    
 
     // ---- BEGIN Primitive drawing section
 
-    //this.materialFEUP.apply();
-    //this.feup.display();
-
-    
+    this.tangram.display();
 
     // ---- END Primitive drawing section
   }

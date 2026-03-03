@@ -22,12 +22,12 @@ export class MyInterface extends CGFinterface {
 
         //Slider element in GUI
         this.gui.add(this.scene, 'scaleFactor', 0.1, 5).name('Scale Factor');
-        this.gui.add(this.scene, 'translateX', -10, 10).name('Translate X');
-        this.gui.add(this.scene, 'translateY', -10, 10).name('Translate Y');
-        this.gui.add(this.scene, 'translateZ', -10, 10).name('Translate Z');
-        this.gui.add(this.scene, 'rotateX', 0, 360).name('Rotate X');
-        this.gui.add(this.scene, 'rotateY', 0, 360).name('Rotate Y');
-        this.gui.add(this.scene, 'rotateZ', 0, 360).name('Rotate Z');
+
+        this.gui.add(this.scene, 'displayDiamond').name('Display Diamond');
+
+        this.gui.add(this.scene, 'displayTriangle').name('Display Triangle');
+
+        this.gui.add(this.scene, 'displayParallelogram').name('Parallelogram');
 
         return true;
     }
