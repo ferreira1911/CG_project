@@ -1,10 +1,11 @@
 # CG 2025/2026
 
-## Group T0xG0y
+## Group T01G05
 | Name             | Number    | E-Mail             |
 | ---------------- | --------- | ------------------ |
-| John Doe         | 201901010 | ...                |
-| Jane Doe         | 201901011 | ...                |
+| Gonçalo Ferreira | 202304562 | up202304562@up.pt  |
+| João Santos      | 202303908 | up202303908@up.pt  |
+| João Furtado     | 202305812 | up202305812@up.pt  |
 
 ----
 
