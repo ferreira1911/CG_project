@@ -2,6 +2,8 @@ import { CGFscene, CGFcamera, CGFaxis, CGFappearance } from "../lib/CGF.js";
 import { MyPyramid } from "./MyPyramid.js";
 import { MyCone } from "./MyCone.js";
 import { MyPlane } from "./MyPlane.js";
+import {MyTangram} from "./MyTangram.js"
+import {MyUnitCube} from "./MyUnitCube.js";
 
 /**
 * MyScene
@@ -14,6 +16,7 @@ export class MyScene extends CGFscene {
     init(application) {
         super.init(application);
         this.initCameras();
+        this.ambientLight = 0.3;
         this.initLights();
         this.initMaterials();
 
@@ -30,11 +33,13 @@ export class MyScene extends CGFscene {
         this.plane = new MyPlane(this, 5);
         this.cone = new MyCone(this, 3, 1);
         this.pyramid = new MyPyramid(this, 3, 1);
+        this.tangram = new MyTangram(this);
+        this.unitCube = new MyUnitCube(this);
         
-        this.objects = [this.plane, this.pyramid, this.cone];
+        this.objects = [this.plane, this.pyramid, this.cone, this.tangram, this.unitCube];
 
         // Labels and ID's for object selection on MyInterface
-        this.objectIDs = { 'Plane': 0 , 'Pyramid': 1, 'Cone': 2};
+        this.objectIDs = { 'Plane': 0 , 'Pyramid': 1, 'Cone': 2, 'Tangram':3, 'UnitCube':4};
 
         //Other variables connected to MyInterface
         this.selectedObject = 0;
@@ -43,10 +48,13 @@ export class MyScene extends CGFscene {
         this.displayNormals = false;
         this.objectComplexity = 0.5;
         this.scaleFactor = 2.0;
+        
 
     }
     initLights() {
-        this.setGlobalAmbientLight(0.3, 0.3, 0.3, 1.0);
+
+        this.setGlobalAmbientLight(this.ambientLight, this.ambientLight, this.ambientLight, 1.0);
+
 
         this.lights[0].setPosition(2.0, 2.0, -1.0, 1.0);
         this.lights[0].setDiffuse(1.0, 1.0, 1.0, 1.0);
@@ -96,6 +104,10 @@ export class MyScene extends CGFscene {
         this.customMaterial.setShininess(this.customMaterialValues['Shininess']);
 
     };
+
+    updateAmbientLight(){
+        this.setGlobalAmbientLight(this.ambientLight, this.ambientLight, this.ambientLight, 1.0);
+    }
 
     updateObjectComplexity(){
         this.objects[this.selectedObject].updateBuffers(this.objectComplexity);
