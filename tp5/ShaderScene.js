@@ -99,8 +99,8 @@ export class ShaderScene extends CGFscene {
 		this.testShaders[5].setUniformsValues({ uSampler2: 1 });
 		this.testShaders[6].setUniformsValues({ uSampler2: 1 });
 		this.testShaders[6].setUniformsValues({ timeFactor: 0 });
-		this.testShaders[9].setUniformsValues({ normScale: 1, timeFactor: 0 });
-		this.testShaders[10].setUniformsValues({ normScale: 1, timeFactor: 0 });
+		this.testShaders[9].setUniformsValues({ normScale: this.scaleFactor, timeFactor: 0 });
+		this.testShaders[10].setUniformsValues({ normScale: this.scaleFactor, timeFactor: 0 });
 		this.testShaders[11].setUniformsValues({ waterMap: 1, timeFactor: 0 });
 
 
@@ -168,9 +168,13 @@ export class ShaderScene extends CGFscene {
 
 	// Called when selected shader changes
 	onSelectedShaderChanged(v) {
+		// dat.GUI can provide string values for option maps.
+		const shaderIndex = Number(v);
+		this.selectedExampleShader = shaderIndex;
+
 		// update shader code
-		this.vShaderDiv.innerHTML = "<xmp>" + getStringFromUrl(this.testShaders[v].vertexURL) + "</xmp>";
-		this.fShaderDiv.innerHTML = "<xmp>" + getStringFromUrl(this.testShaders[v].fragmentURL) + "</xmp>";
+		this.vShaderDiv.innerHTML = "<xmp>" + getStringFromUrl(this.testShaders[shaderIndex].vertexURL) + "</xmp>";
+		this.fShaderDiv.innerHTML = "<xmp>" + getStringFromUrl(this.testShaders[shaderIndex].fragmentURL) + "</xmp>";
 
 		// update scale factor
 		this.onScaleFactorChanged(this.scaleFactor);
@@ -193,21 +197,18 @@ export class ShaderScene extends CGFscene {
 
 	// called when the scale factor changes on the interface
 	onScaleFactorChanged(v) {
-		this.testShaders[this.selectedExampleShader].setUniformsValues({ normScale: this.scaleFactor });
+		this.testShaders[this.selectedExampleShader].setUniformsValues({ normScale: v });
 	}
 
 	// called periodically (as per setUpdatePeriod() in init())
 	update(t) {
-		// only shader 6 and 9 are using time factor
-		if ([6, 9, 10,11].includes(this.selectedExampleShader)){
-			// Dividing the time by 100 "slows down" the variation (i.e. in 100 ms timeFactor increases 1 unit).
-			// Doing the modulus (%) by 100 makes the timeFactor loop between 0 and 99
-			// ( so the loop period of timeFactor is 100 times 100 ms = 10s ; the actual animation loop depends on how timeFactor is used in the shader )
-			this.testShaders[6].setUniformsValues({ timeFactor: t / 100 % 100 });
-			this.testShaders[9].setUniformsValues({ timeFactor: t / 100 % 100 });
-			this.testShaders[10].setUniformsValues({ timeFactor: t / 100 % 100 });
-			this.testShaders[11].setUniformsValues({ timeFactor: t / 100 % 100 });
-		}
+		// Dividing by 100 slows down time progression in shaders.
+		const timeValue = (t / 100) % 100;
+		// Keep all animated shaders in sync every frame.
+		this.testShaders[6].setUniformsValues({ timeFactor: timeValue });
+		this.testShaders[9].setUniformsValues({ timeFactor: timeValue });
+		this.testShaders[10].setUniformsValues({ timeFactor: timeValue });
+		this.testShaders[11].setUniformsValues({ timeFactor: timeValue });
 	}
 
 	// main display function

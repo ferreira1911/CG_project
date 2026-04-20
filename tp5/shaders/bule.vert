@@ -12,8 +12,10 @@ uniform float timeFactor;
 varying vec4 vert;
 
 void main() {
-
-	gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition.x + normScale + sin(timeFactor),aVertexPosition.y,aVertexPosition.z, 1.0);
+	// X translation amplitude is controlled by the UI scale slider.
+	float xOffset = 0.1 * normScale * sin(timeFactor);
+	vec3 displacedPosition = aVertexPosition + vec3(xOffset, 0.0, 0.0);
+	gl_Position = uPMatrix * uMVMatrix * vec4(displacedPosition, 1.0);
 
 	vert = gl_Position;
 }
