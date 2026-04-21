@@ -1,5 +1,4 @@
 import { CGFscene, CGFcamera, CGFaxis } from "../lib/CGF.js";
-
 /**
  * MyScene
  * @constructor
@@ -8,6 +7,7 @@ export class MyScene extends CGFscene {
   constructor() {
     super();
   }
+  
   init(application) {
     super.init(application);
 
@@ -24,27 +24,35 @@ export class MyScene extends CGFscene {
 
     this.displayAxis = true;
   }
+
+
   initLights() {
-    this.lights[0].setPosition(15, 2, 5, 1);
+    this.lights[0].setPosition(-200, 200, 200, 1);
     this.lights[0].setDiffuse(1.0, 1.0, 1.0, 1.0);
     this.lights[0].enable();
     this.lights[0].update();
   }
+
+
   initCameras() {
     this.camera = new CGFcamera(
-      0.4,
+      1.0,
       0.1,
-      500,
-      vec3.fromValues(15, 15, 15),
+      1000,
+      vec3.fromValues(5, 5, 5),
       vec3.fromValues(0, 0, 0)
     );
   }
+
+
   setDefaultAppearance() {
     this.setAmbient(0.2, 0.4, 0.8, 1.0);
     this.setDiffuse(0.2, 0.4, 0.8, 1.0);
     this.setSpecular(0.2, 0.4, 0.8, 1.0);
     this.setShininess(10.0);
   }
+
+
   display() {
     this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
