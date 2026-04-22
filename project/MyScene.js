@@ -1,4 +1,5 @@
-import { CGFscene, CGFcamera, CGFaxis } from "../lib/CGF.js";
+import { CGFscene, CGFcamera, CGFaxis, CGFtexture } from "../lib/CGF.js";
+import { MyPanorama } from "./elements/MyPanorama.js";
 /**
  * MyScene
  * @constructor
@@ -13,6 +14,7 @@ export class MyScene extends CGFscene {
 
     this.initCameras();
     this.initLights();
+    this.enableTextures(true);
 
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.clearDepth(100.0);
@@ -20,7 +22,10 @@ export class MyScene extends CGFscene {
     this.gl.enable(this.gl.CULL_FACE);
     this.gl.depthFunc(this.gl.LEQUAL);
 
+    this.initTextures();
+
     this.axis = new CGFaxis(this);
+    this.panorama = new MyPanorama(this, this.panoramaTexture);
 
     this.displayAxis = true;
   }
@@ -29,6 +34,8 @@ export class MyScene extends CGFscene {
   initLights() {
     this.lights[0].setPosition(-200, 200, 200, 1);
     this.lights[0].setDiffuse(1.0, 1.0, 1.0, 1.0);
+    this.lights[0].setSpecular(1.0, 1.0, 1.0, 1.0);
+
     this.lights[0].enable();
     this.lights[0].update();
   }
@@ -38,12 +45,15 @@ export class MyScene extends CGFscene {
     this.camera = new CGFcamera(
       1.0,
       0.1,
-      1000,
+      500,
       vec3.fromValues(5, 5, 5),
       vec3.fromValues(0, 0, 0)
     );
   }
 
+  initTextures() {
+    this.panoramaTexture =  new CGFtexture(this, './resources/textures/panorama.jpg');
+  }
 
   setDefaultAppearance() {
     this.setAmbient(0.2, 0.4, 0.8, 1.0);
@@ -66,7 +76,7 @@ export class MyScene extends CGFscene {
     this.setDefaultAppearance();
 
     // ---- BEGIN Primitive drawing section
-
+    this.panorama.display();
     // ---- END Primitive drawing section
   }
 }
