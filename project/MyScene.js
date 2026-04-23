@@ -1,5 +1,6 @@
 import { CGFscene, CGFcamera, CGFaxis, CGFtexture } from "../lib/CGF.js";
 import { MyPanorama } from "./elements/MyPanorama.js";
+import { MyTerrain } from "./elements/MyTerrain.js";
 /**
  * MyScene
  * @constructor
@@ -26,13 +27,14 @@ export class MyScene extends CGFscene {
 
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
+    this.terrain = new MyTerrain(this);
 
     this.displayAxis = true;
   }
 
 
   initLights() {
-    this.lights[0].setPosition(-200, 200, 200, 1);
+    this.lights[0].setPosition(-200, 200, 200, 0);
     this.lights[0].setDiffuse(1.0, 1.0, 1.0, 1.0);
     this.lights[0].setSpecular(1.0, 1.0, 1.0, 1.0);
 
@@ -77,6 +79,7 @@ export class MyScene extends CGFscene {
 
     // ---- BEGIN Primitive drawing section
     this.panorama.display();
+    this.terrain.display();
     // ---- END Primitive drawing section
   }
 }
