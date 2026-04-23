@@ -7,7 +7,6 @@ varying vec3 vObjPos;
 
 uniform sampler2D uSampler;
 uniform float time;
-uniform vec3 uLightPos;
 
 float hash(vec3 p) {
     p = fract(p * vec3(0.16532, 0.17369, 0.15787));
@@ -31,6 +30,17 @@ const mat3 rot = mat3(
     -0.60, -0.48,  0.64
 );
 
+float fbm_cheap(vec3 p) {
+    float f = 0.0;
+    float amp = 0.5;
+    for (int i = 0; i < 2; i++) {
+        f += amp * noise(p);
+        p = rot * p * 2.17;
+        amp *= 0.5;
+    }
+    return f;
+}
+
 float fbm(vec3 p) {
     float f = 0.0;
     float amp = 0.5;
@@ -46,28 +56,38 @@ void main() {
     vec4 baseSky = texture2D(uSampler, vTextureCoord);
     vec3 dir = normalize(vObjPos);
 
-    vec3 base = rot * dir * 2.3 + vec3(100.0);
-    base.x += time * 0.05;
-    base.z += time * 0.02;
+    
+    vec3 p = rot * dir * 4.5 + vec3(100.0);
+    p.x += time * (0.01 + dir.y * 0.01);
+    p.z += time * 0.01;
 
-    float clouds = fbm(base);
+    vec3 q = vec3(
+        fbm_cheap(p),
+        fbm_cheap(p + vec3(5.2, 1.3, 2.7)),
+        fbm_cheap(p + vec3(8.1, 3.7, 1.2))
+    );
+    q = (q - 0.5) * 1.0;
 
-    float cloudMask = smoothstep(0.38, 0.52, clouds);
-    cloudMask *= smoothstep(0.02, 0.35, dir.y);
+    vec3 r = vec3(
+        fbm_cheap(p + 1.0 * q + vec3(1.7, 9.2, 4.3)),
+        fbm_cheap(p + 1.0 * q + vec3(8.3, 2.8, 6.1)),
+        fbm_cheap(p + 1.0 * q + vec3(3.9, 5.5, 0.8))
+    );
+    r = (r - 0.5) * 0.8;
 
-    vec3 sunDir = normalize(uLightPos);
-    float sunFacing = max(dot(dir, sunDir), 0.0);
-    float halo = pow(sunFacing, 8.0);
-    float silver = pow(sunFacing, 3.0);
+    float clouds = fbm(p + 0.8 * r);
 
-    vec3 sunTint = vec3(1.0, 0.88, 0.70);
-    vec3 skyWithHalo = baseSky.rgb + sunTint * halo * 0.35;
+    float cloudMask = smoothstep(0.50, 0.63, clouds);
+    
+    
+    cloudMask *= smoothstep(0.15, 0.45, dir.y);
 
-    float cloudShadowTerm = 1.0 - 0.15 * (1.0 - sunFacing);
-    vec3 cloudColor = vec3(cloudShadowTerm);
-    cloudColor += sunTint * silver * 0.35;
+    float cloudThickness = smoothstep(0.50, 0.75, clouds);
+    vec3 shadowColor = vec3(0.55, 0.60, 0.70);
+    vec3 litColor = vec3(1.0, 0.98, 0.95);
+    vec3 cloudColor = mix(shadowColor, litColor, cloudThickness);
 
-    vec3 finalColor = mix(skyWithHalo, cloudColor, cloudMask);
+    vec3 finalColor = mix(baseSky.rgb, cloudColor, cloudMask);
 
     gl_FragColor = vec4(finalColor, 1.0);
 }
