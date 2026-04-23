@@ -1,4 +1,4 @@
-import { CGFscene, CGFcamera, CGFaxis, CGFtexture } from "../lib/CGF.js";
+import { CGFscene, CGFcamera, CGFaxis, CGFtexture, CGFshader } from "../lib/CGF.js";
 import { MyPanorama } from "./elements/MyPanorama.js";
 /**
  * MyScene
@@ -23,11 +23,18 @@ export class MyScene extends CGFscene {
     this.gl.depthFunc(this.gl.LEQUAL);
 
     this.initTextures();
+    this.initShaders();
+
+    
 
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
 
     this.displayAxis = true;
+
+
+
+    this.setUpdatePeriod(50);
   }
 
 
@@ -53,6 +60,12 @@ export class MyScene extends CGFscene {
 
   initTextures() {
     this.panoramaTexture =  new CGFtexture(this, './resources/textures/panorama.jpg');
+    this.cloudMap = new CGFtexture(this, './resources/textures/cloudMap.png');
+  }
+
+  initShaders() {
+    this.panoramaShader = new CGFshader(this.gl, "./shaders/sky.vert", "./shaders/sky.frag");
+    this.panoramaShader.setUniformsValues({ uSampler: 0, time: 0 });
   }
 
   setDefaultAppearance() {
@@ -62,6 +75,11 @@ export class MyScene extends CGFscene {
     this.setShininess(10.0);
   }
 
+  update(t) {
+    if (this.startTime === undefined) this.startTime = t;
+    this.time = (t - this.startTime) / 1000;
+    this.panoramaShader.setUniformsValues({ time: this.time });
+  }
 
   display() {
     this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
@@ -76,7 +94,10 @@ export class MyScene extends CGFscene {
     this.setDefaultAppearance();
 
     // ---- BEGIN Primitive drawing section
+    this.setActiveShader(this.panoramaShader);
+    this.panoramaTexture.bind(0);
     this.panorama.display();
+    this.setActiveShader(this.defaultShader);
     // ---- END Primitive drawing section
   }
 }
