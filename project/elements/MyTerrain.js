@@ -12,8 +12,16 @@ export class MyTerrain extends CGFobject {
     }
 
     initMaterials() {
-        this.appearance = new CGFappearance(this.scene);
+        this.colorMap = new CGFtexture(this.scene, "resources/textures/terrain_color.jpg");
+        this.heightMap = new CGFtexture(this.scene, "resources/textures/terrain_height.jpg");
 
+        this.appearance = new CGFappearance(this.scene);
+        this.appearance.setAmbient(0.3, 0.3, 0.3, 1);
+        this.appearance.setDiffuse(0.7, 0.7, 0.7, 1);
+        this.appearance.setSpecular(0.0, 0.0, 0.0, 1);
+        this.appearance.setShininess(1);
+
+        this.appearance.setTexture(this.colorMap);
         this.appearance.setTextureWrap('REPEAT', 'REPEAT');
     }
 

@@ -54,12 +54,10 @@ export class MyPlane extends CGFobject {
                 let topRight = topLeft + 1;
 
                 // Metade inferior do quadrado
-                // Ordem: Baixo-Esquerda -> Baixo-Direita -> Cima-Direita
-                this.indices.push(bottomLeft, bottomRight, topRight);
+                this.indices.push(bottomLeft, topRight, bottomRight);
 
                 // Metade superior do quadrado
-                // Ordem: Baixo-Esquerda -> Cima-Direita -> Cima-Esquerda
-                this.indices.push(bottomLeft, topRight, topLeft);
+                this.indices.push(bottomLeft, topLeft, topRight);
             }
         }
 
