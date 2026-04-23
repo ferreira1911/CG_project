@@ -7,6 +7,7 @@ varying vec3 vObjPos;
 
 uniform sampler2D uSampler;
 uniform float time;
+uniform vec3 uLightPos;
 
 float hash(vec3 p) {
     p = fract(p * vec3(0.16532, 0.17369, 0.15787));
@@ -51,10 +52,22 @@ void main() {
 
     float clouds = fbm(base);
 
-    float cloudMask = smoothstep(0.28, 0.50, clouds);
+    float cloudMask = smoothstep(0.38, 0.52, clouds);
     cloudMask *= smoothstep(0.02, 0.35, dir.y);
 
-    vec3 finalColor = mix(baseSky.rgb, vec3(1.0), cloudMask);
+    vec3 sunDir = normalize(uLightPos);
+    float sunFacing = max(dot(dir, sunDir), 0.0);
+    float halo = pow(sunFacing, 8.0);
+    float silver = pow(sunFacing, 3.0);
+
+    vec3 sunTint = vec3(1.0, 0.88, 0.70);
+    vec3 skyWithHalo = baseSky.rgb + sunTint * halo * 0.35;
+
+    float cloudShadowTerm = 1.0 - 0.15 * (1.0 - sunFacing);
+    vec3 cloudColor = vec3(cloudShadowTerm);
+    cloudColor += sunTint * silver * 0.35;
+
+    vec3 finalColor = mix(skyWithHalo, cloudColor, cloudMask);
 
     gl_FragColor = vec4(finalColor, 1.0);
 }

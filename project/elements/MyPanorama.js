@@ -16,7 +16,7 @@ export class MyPanorama extends CGFobject {
         this.scene.pushMatrix();
 
         const cam = this.scene.camera.position;
-        this.scene.translate(cam[0], cam[1], cam[2]);
+        //this.scene.translate(cam[0], cam[1], cam[2]);
 
         this.appearance.apply();
         this.sphere.display();

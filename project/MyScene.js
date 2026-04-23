@@ -39,7 +39,7 @@ export class MyScene extends CGFscene {
 
 
   initLights() {
-    this.lights[0].setPosition(-200, 200, 200, 1);
+    this.lights[0].setPosition(-170, 200, -100, 0);
     this.lights[0].setDiffuse(1.0, 1.0, 1.0, 1.0);
     this.lights[0].setSpecular(1.0, 1.0, 1.0, 1.0);
 
@@ -65,7 +65,12 @@ export class MyScene extends CGFscene {
 
   initShaders() {
     this.panoramaShader = new CGFshader(this.gl, "./shaders/sky.vert", "./shaders/sky.frag");
-    this.panoramaShader.setUniformsValues({ uSampler: 0, time: 0 });
+    const lp = this.lights[0].position;
+    this.panoramaShader.setUniformsValues({
+      uSampler: 0,
+      time: 0,
+      uLightPos: [lp[0], lp[1], lp[2]]
+    });
   }
 
   setDefaultAppearance() {
