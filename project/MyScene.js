@@ -31,14 +31,16 @@ export class MyScene extends CGFscene {
     this.panorama = new MyPanorama(this, this.panoramaTexture);
 
     
-    // Rocks: positions manual, shape params randomized via randRange
+    // Rocks: positions + color texture manual, shape params randomized via randRange
     const r = (min, max) => this.randRange(min, max);
+    const tex1 = this.rockColorMap1;
+    const tex2 = this.rockColorMap2;
     this.rocks = [
-      new MyRock(this, -3, 0, -2, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
-      new MyRock(this,  4, 0,  1, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
-      new MyRock(this,  0, 0,  4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
-      new MyRock(this, -5, 0,  3, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
-      new MyRock(this,  2, 0, -4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
+      new MyRock(this, -3, 0, -2, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex1),
+      new MyRock(this,  4, 0,  1, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex2),
+      new MyRock(this,  0, 0,  4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex1),
+      new MyRock(this, -5, 0,  3, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex2),
+      new MyRock(this,  2, 0, -4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex1),
     ];
 
     this.displayAxis = true;
@@ -68,7 +70,8 @@ export class MyScene extends CGFscene {
   initTextures() {
     this.panoramaTexture = new CGFtexture(this, './resources/textures/panorama.jpg');
     this.cloudMap = new CGFtexture(this, './resources/textures/cloudMap.png');
-    this.rockColorMap = new CGFtexture(this, './resources/textures/rockTexture1.jpg');
+    this.rockColorMap1 = new CGFtexture(this, './resources/textures/rockTexture1.jpg');
+    this.rockColorMap2 = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
     this.rockNormalMap = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
     this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
   }
@@ -130,9 +133,9 @@ export class MyScene extends CGFscene {
     this.panorama.display();
     this.setActiveShader(this.defaultShader);
 
-    // Rocks: activate shader and bind all three textures ONCE, then loop
+    // Rocks: activate shader and bind shared textures (normal + noise) ONCE.
+    // Each rock binds its own color texture to unit 0 inside its display().
     this.setActiveShader(this.rockShader);
-    this.rockColorMap.bind(0);
     this.rockNormalMap.bind(1);
     this.rockNoiseMap.bind(2);
 

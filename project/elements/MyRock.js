@@ -2,7 +2,7 @@ import { CGFobject } from '../../lib/CGF.js';
 import { MySphere } from '../geometric/MySphere.js';
 
 export class MyRock extends CGFobject {
-    constructor(scene, x, y, z, scale, seed, deform) {
+    constructor(scene, x, y, z, scale, seed, deform, colorTex) {
         super(scene);
         this.sphere = new MySphere(scene, 0.5, 32, 16, false, 1, 0);
         this.x = x;
@@ -11,6 +11,7 @@ export class MyRock extends CGFobject {
         this.scale = scale;
         this.seed = seed;
         this.deform = deform;
+        this.colorTex = colorTex;
     }
 
     display() {
@@ -19,6 +20,9 @@ export class MyRock extends CGFobject {
             uSeed: this.seed,
             uDeformScale: this.deform
         });
+
+        // Per-rock color texture on unit 0; normal + noise are shared (bound in scene)
+        this.colorTex.bind(0);
 
         this.scene.pushMatrix();
         this.scene.translate(this.x, this.y, this.z);

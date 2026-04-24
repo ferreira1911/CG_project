@@ -40,7 +40,11 @@ void main() {
     );
     vec3 p = aVertexPosition * skew * 1.5 + vec3(uSeed * 0.37);
 
-    float bump = sampleNoise(p, aVertexNormal);
+    // Low-freq noise pushes outward (bulky rock), high-freq signed noise carves
+    // inward dents and outward bumps — rocks get cracks/erosion, not just inflation
+    float big    = sampleNoise(p, aVertexNormal);
+    float detail = sampleNoise(p * 3.0, aVertexNormal) - 0.5;
+    float bump   = big + 0.5 * detail;
 
     vec3 displacedPosition = aVertexPosition + aVertexNormal * bump * uDeformScale;
 
