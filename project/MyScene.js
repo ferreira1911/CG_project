@@ -1,5 +1,7 @@
 import { CGFscene, CGFcamera, CGFaxis, CGFtexture, CGFshader } from "../lib/CGF.js";
 import { MyPanorama } from "./elements/MyPanorama.js";
+import { MyRock } from "./elements/MyRock.js";
+import { MySphere } from "./geometric/MySphere.js";
 /**
  * MyScene
  * @constructor
@@ -8,7 +10,7 @@ export class MyScene extends CGFscene {
   constructor() {
     super();
   }
-  
+
   init(application) {
     super.init(application);
 
@@ -25,18 +27,24 @@ export class MyScene extends CGFscene {
     this.initTextures();
     this.initShaders();
 
-    
-
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
 
+    
+    // Rocks: positions manual, shape params randomized via randRange
+    const r = (min, max) => this.randRange(min, max);
+    this.rocks = [
+      new MyRock(this, -3, 0, -2, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
+      new MyRock(this,  4, 0,  1, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
+      new MyRock(this,  0, 0,  4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
+      new MyRock(this, -5, 0,  3, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
+      new MyRock(this,  2, 0, -4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40)),
+    ];
+
     this.displayAxis = true;
-
-
 
     this.setUpdatePeriod(50);
   }
-
 
   initLights() {
     this.lights[0].setPosition(-170, 200, -100, 0);
@@ -46,7 +54,6 @@ export class MyScene extends CGFscene {
     this.lights[0].enable();
     this.lights[0].update();
   }
-
 
   initCameras() {
     this.camera = new CGFcamera(
@@ -59,8 +66,11 @@ export class MyScene extends CGFscene {
   }
 
   initTextures() {
-    this.panoramaTexture =  new CGFtexture(this, './resources/textures/panorama.jpg');
+    this.panoramaTexture = new CGFtexture(this, './resources/textures/panorama.jpg');
     this.cloudMap = new CGFtexture(this, './resources/textures/cloudMap.png');
+    this.rockColorMap = new CGFtexture(this, './resources/textures/rockTexture1.jpg');
+    this.rockNormalMap = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
+    this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
   }
 
   initShaders() {
@@ -71,6 +81,20 @@ export class MyScene extends CGFscene {
       time: 0,
       uLightPos: [lp[0], lp[1], lp[2]]
     });
+
+    this.rockShader = new CGFshader(this.gl, "./shaders/rock.vert", "./shaders/rock.frag");
+    this.rockShader.setUniformsValues({
+      uColorMap: 0,
+      uNormalMap: 1,
+      uNoiseMap: 2,
+      uLightPos: [lp[0], lp[1], lp[2]],
+      uDeformScale: 0.15,
+      uSeed: 0.0
+    });
+  }
+
+  randRange(min, max) {
+    return min + Math.random() * (max - min);
   }
 
   setDefaultAppearance() {
@@ -99,10 +123,23 @@ export class MyScene extends CGFscene {
     this.setDefaultAppearance();
 
     // ---- BEGIN Primitive drawing section
+
+    // Sky
     this.setActiveShader(this.panoramaShader);
     this.panoramaTexture.bind(0);
     this.panorama.display();
     this.setActiveShader(this.defaultShader);
+
+    // Rocks: activate shader and bind all three textures ONCE, then loop
+    this.setActiveShader(this.rockShader);
+    this.rockColorMap.bind(0);
+    this.rockNormalMap.bind(1);
+    this.rockNoiseMap.bind(2);
+
+    for (const rock of this.rocks) rock.display();
+
+    this.setActiveShader(this.defaultShader);
+
     // ---- END Primitive drawing section
   }
 }
