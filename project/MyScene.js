@@ -44,14 +44,14 @@ export class MyScene extends CGFscene {
 
 
   initCameras() {
-    this.camera = new CGFcamera(
-      1.0,
-      0.1,
-      500,
-      vec3.fromValues(5, 5, 5),
-      vec3.fromValues(0, 0, 0)
-    );
-  }
+  this.camera = new CGFcamera(
+    1.0,           // Campo de visão (FOV)
+    0.1,           // Distância mínima (Near)
+    1000,          // Distância máxima (Far) - Aumentamos para 1000 para ver o horizonte
+    vec3.fromValues(0, 40, 100), // Posição inicial: mais alta (Y=40) e afastada
+    vec3.fromValues(0, 0, 0)     // Ponto para onde olha (o centro do terreno)
+  );
+}
 
   initTextures() {
     this.panoramaTexture =  new CGFtexture(this, './resources/textures/panorama.jpg');
