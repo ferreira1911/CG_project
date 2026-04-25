@@ -1,8 +1,6 @@
 import { CGFscene, CGFcamera, CGFaxis, CGFtexture, CGFshader } from "../lib/CGF.js";
 import { MyPanorama } from "./elements/MyPanorama.js";
-import { MyRock } from "./elements/MyRock.js";
-import { MySphere } from "./geometric/MySphere.js";
-import { MyFlora } from "./elements/MyFlora.js";
+import { MyTerrain } from "./elements/MyTerrain.js";
 /**
  * MyScene
  * @constructor
@@ -30,28 +28,7 @@ export class MyScene extends CGFscene {
 
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
-
-    this.flora = new MyFlora(
-      this,
-      1, 0, 0,                                 // x, y, z
-      0.5,                                     // overall scale
-      2, 30, 0.5, 0.5,                        // depth, angle°, trunkLength, lengthDecay
-      0.05, 0.6, 15,                           // initialThickness, thicknessDecay, angleJitter°
-      4, 1.2, 45, 0.3,                         // petalCount, petalSize (× tip branch len), petalTilt°, petalJitter
-      null,                                    // petalTexture (wire later)
-      this.r(0, 100)                           // seed
-    );
-
-    // Rocks: positions + color texture manual, shape params randomized via this.r
-    const tex1 = this.rockColorMap1;
-    const tex2 = this.rockColorMap2;
-    this.rocks = [
-      new MyRock(this, -3, 0, -2, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex1),
-      new MyRock(this,  4, 0,  1, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex2),
-      new MyRock(this,  0, 0,  4, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex1),
-      new MyRock(this, -5, 0,  3, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex2),
-      new MyRock(this,  2, 0, -4, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex1),
-    ];
+    this.terrain = new MyTerrain(this);
 
     this.displayAxis = true;
 
@@ -68,14 +45,14 @@ export class MyScene extends CGFscene {
   }
 
   initCameras() {
-    this.camera = new CGFcamera(
-      1.0,
-      0.1,
-      500,
-      vec3.fromValues(5, 5, 5),
-      vec3.fromValues(0, 0, 0)
-    );
-  }
+  this.camera = new CGFcamera(
+    1.0,           // Campo de visão (FOV)
+    0.1,           // Distância mínima (Near)
+    1000,          // Distância máxima (Far) - Aumentamos para 1000 para ver o horizonte
+    vec3.fromValues(0, 40, 100), // Posição inicial: mais alta (Y=40) e afastada
+    vec3.fromValues(0, 0, 0)     // Ponto para onde olha (o centro do terreno)
+  );
+}
 
   initTextures() {
     this.panoramaTexture = new CGFtexture(this, './resources/textures/panorama.jpg');
@@ -141,20 +118,8 @@ export class MyScene extends CGFscene {
     this.setActiveShader(this.panoramaShader);
     this.panoramaTexture.bind(0);
     this.panorama.display();
+    this.terrain.display();
     this.setActiveShader(this.defaultShader);
-
-    // Rocks: activate shader and bind shared textures (normal + noise) ONCE.
-    // Each rock binds its own color texture to unit 0 inside its display().
-    this.setActiveShader(this.rockShader);
-    this.rockNormalMap.bind(1);
-    this.rockNoiseMap.bind(2);
-
-    for (const rock of this.rocks) rock.display();
-
-    this.setActiveShader(this.defaultShader);
-
-    this.flora.display();
-
     // ---- END Primitive drawing section
   }
 }
