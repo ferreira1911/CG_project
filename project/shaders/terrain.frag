@@ -11,7 +11,7 @@ uniform sampler2D uSampler4; // Máscara B&W (Canal 3)
 void main() {
     // Lemos as cores repetindo as texturas 5x para terem detalhe
     vec4 colorTerrain = texture2D(uSampler, vTextureCoord * 5.0);
-    vec4 colorPath = texture2D(uSampler3, vTextureCoord * 5.0);
+    vec4 colorPath = texture2D(uSampler3, fract(vTextureCoord * 5.0));
     
     // A máscara não se repete, cobre o terreno todo (1x)
     vec4 mask = texture2D(uSampler4, vTextureCoord);
