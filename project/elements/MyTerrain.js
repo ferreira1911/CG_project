@@ -4,11 +4,80 @@ import { MyPlane } from '../geometric/MyPlane.js';
 export class MyTerrain extends CGFobject {
     constructor(scene) {
         super(scene);
-        
+
         // 50 divisões (50x50 quadrados).
-        this.plane = new MyPlane(scene, 50); 
+        this.plane = new MyPlane(scene, 50);
+
+        // World extent of the terrain (matches the scale() in display())
+        this.terrainSize = 400;
+        // Must match `heightMapColor.r * 8.0` in terrain.vert
+        this.maxHeight = 8.0;
+
+        // Async CPU-side sampling of heightmap + mask
+        this.ready = false;
+        this._heightReady = false;
+        this._maskReady = false;
+        this.loadCpuTextures();
 
         this.initMaterials();
+    }
+
+    loadCpuTextures() {
+        const grab = (src, onDone) => {
+            const img = new Image();
+            img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = img.width; c.height = img.height;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                onDone(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
+                if (this._heightReady && this._maskReady) this.ready = true;
+            };
+            img.src = src;
+        };
+        grab("resources/textures/terrain/terrain_height.jpg", (data, w, h) => {
+            this._heightData = data; this._heightW = w; this._heightH = h;
+            this._heightReady = true;
+        });
+        grab("resources/textures/terrain/mask.jpg", (data, w, h) => {
+            this._maskData = data; this._maskW = w; this._maskH = h;
+            this._maskReady = true;
+        });
+    }
+
+    // Sample a texture image's red channel at world (x,z). Returns 0 if data not ready
+    // or the point is outside the terrain. CGF doesn't flip Y on upload, so v in the
+    // shader maps directly to the image row.
+    _sampleR(data, w, h, worldX, worldZ) {
+        if (!data) return 0;
+        const half = this.terrainSize / 2;
+        const u = (worldX + half) / this.terrainSize;
+        const v = (worldZ + half) / this.terrainSize;
+        if (u < 0 || u > 1 || v < 0 || v > 1) return 0;
+        const px = Math.min(w - 1, Math.floor(u * (w - 1)));
+        const py = Math.min(h - 1, Math.floor(v * (h - 1)));
+        return data[(py * w + px) * 4];
+    }
+
+    // Mirrors `heightMap.r * 8.0` from terrain.vert
+    heightAt(worldX, worldZ) {
+        return (this._sampleR(this._heightData, this._heightW, this._heightH, worldX, worldZ) / 255) * this.maxHeight;
+    }
+
+    // White in mask = path (matches mix() in terrain.frag)
+    isPath(worldX, worldZ) {
+        return this._sampleR(this._maskData, this._maskW, this._maskH, worldX, worldZ) > 128;
+    }
+
+    // True if (x,z) — or any of 8 points around it within `radius` — is on the path
+    isPathClear(worldX, worldZ, radius) {
+        if (this.isPath(worldX, worldZ)) return false;
+        if (radius <= 0) return true;
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            if (this.isPath(worldX + Math.cos(a) * radius, worldZ + Math.sin(a) * radius)) return false;
+        }
+        return true;
     }
 
     initMaterials() {
