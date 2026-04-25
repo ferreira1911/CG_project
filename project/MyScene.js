@@ -2,6 +2,7 @@ import { CGFscene, CGFcamera, CGFaxis, CGFtexture, CGFshader } from "../lib/CGF.
 import { MyPanorama } from "./elements/MyPanorama.js";
 import { MyRock } from "./elements/MyRock.js";
 import { MySphere } from "./geometric/MySphere.js";
+import { MyFlora } from "./elements/MyFlora.js";
 /**
  * MyScene
  * @constructor
@@ -30,17 +31,26 @@ export class MyScene extends CGFscene {
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
 
-    
-    // Rocks: positions + color texture manual, shape params randomized via randRange
-    const r = (min, max) => this.randRange(min, max);
+    this.flora = new MyFlora(
+      this,
+      1, 0, 0,                                 // x, y, z
+      0.5,                                     // overall scale
+      2, 30, 0.5, 0.5,                        // depth, angle°, trunkLength, lengthDecay
+      0.05, 0.6, 15,                           // initialThickness, thicknessDecay, angleJitter°
+      4, 1.2, 45, 0.3,                         // petalCount, petalSize (× tip branch len), petalTilt°, petalJitter
+      null,                                    // petalTexture (wire later)
+      this.r(0, 100)                           // seed
+    );
+
+    // Rocks: positions + color texture manual, shape params randomized via this.r
     const tex1 = this.rockColorMap1;
     const tex2 = this.rockColorMap2;
     this.rocks = [
-      new MyRock(this, -3, 0, -2, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex1),
-      new MyRock(this,  4, 0,  1, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex2),
-      new MyRock(this,  0, 0,  4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex1),
-      new MyRock(this, -5, 0,  3, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex2),
-      new MyRock(this,  2, 0, -4, r(0.8, 1.5), r(0, 100), r(0.25, 0.40), tex1),
+      new MyRock(this, -3, 0, -2, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex1),
+      new MyRock(this,  4, 0,  1, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex2),
+      new MyRock(this,  0, 0,  4, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex1),
+      new MyRock(this, -5, 0,  3, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex2),
+      new MyRock(this,  2, 0, -4, this.r(0.8, 1.5), this.r(0, 100), this.r(0.25, 0.40), tex1),
     ];
 
     this.displayAxis = true;
@@ -96,7 +106,7 @@ export class MyScene extends CGFscene {
     });
   }
 
-  randRange(min, max) {
+  r(min, max) {
     return min + Math.random() * (max - min);
   }
 
@@ -142,6 +152,8 @@ export class MyScene extends CGFscene {
     for (const rock of this.rocks) rock.display();
 
     this.setActiveShader(this.defaultShader);
+
+    this.flora.display();
 
     // ---- END Primitive drawing section
   }

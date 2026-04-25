@@ -25,15 +25,17 @@ export class MyCylinder extends CGFobject {
 
         // Generate vertices and normals
         for (var s = 0; s <= this.stacks; s++) {
-            var z = s * stackHeight;
+            var y = s * stackHeight; // <-- Height now grows UP along the Y axis
             var ang = 0;
 
             for (var i = 0; i <= this.slices; i++) {
                 var x = Math.cos(ang);
-                var y = Math.sin(ang);
+                var z = Math.sin(ang); // <-- Z completes the circular base
 
                 this.vertices.push(x, y, z);
-                this.normals.push(x, y, 0);
+                
+                // Normals point outward horizontally, so Y is 0
+                this.normals.push(x, 0, z); 
 
                 ang += alphaAng;
             }
