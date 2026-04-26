@@ -74,11 +74,12 @@ export class MyFlora extends CGFobject {
     this.branchAppearance.setSpecular(0.02, 0.02, 0.02, 1.0);
     this.branchAppearance.setShininess(2.0);
 
+    // Petals/Leaves: green color
     this.petalAppearance = new CGFappearance(this.scene);
-    this.petalAppearance.setAmbient(0.6, 0.6, 0.6, 1.0);
-    this.petalAppearance.setDiffuse(1.0, 1.0, 1.0, 1.0);
-    this.petalAppearance.setSpecular(0.2, 0.2, 0.2, 1.0);
-    this.petalAppearance.setShininess(20.0);
+    this.petalAppearance.setAmbient(0.1, 0.3, 0.1, 1.0);
+    this.petalAppearance.setDiffuse(0.2, 0.6, 0.2, 1.0);
+    this.petalAppearance.setSpecular(0.1, 0.1, 0.1, 1.0);
+    this.petalAppearance.setShininess(10.0);
   }
 
   // Deterministic pseudo-random in [0,1) keyed by (seed, call index).
@@ -106,30 +107,34 @@ export class MyFlora extends CGFobject {
   }
 
   drawBranch(currentDepth, currentLength, currentThickness) {
-    if (currentDepth === 0) {
+    if (currentDepth <= 1) {
       this.scene.setActiveShader(this.scene.defaultShader);
       this.petalAppearance.apply();
 
       this.scene.pushMatrix();
-      for (let i = 0; i < this.petalCount; i++) {
-        const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
-        const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
-        const sBase = currentLength * this.petalSize * sizeJ;
-        const sH    = sBase * 1.3;
+      if (currentDepth === 0 || this.rand() < 0.3) {
+        for (let i = 0; i < this.petalCount; i++) {
+          const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
+          const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
+          // Use a fixed small scale for leaves so they don't depend on trunk length
+          const sBase = 0.2 * this.petalSize * sizeJ;
+          const sH    = sBase * 1.5;
 
-        this.scene.pushMatrix();
-        this.scene.rotate(i * (Math.PI * 2) / this.petalCount, 0, 1, 0);
-        this.scene.rotate(this.petalTilt + tiltJ, 1, 0, 0);
-        this.scene.translate(0, sH * 0.5, 0);
-        this.scene.scale(sBase, sH, sBase);
-        this.petalGeometry.display();
-        this.scene.popMatrix();
+          this.scene.pushMatrix();
+          this.scene.rotate(i * (Math.PI * 2) / this.petalCount, 0, 1, 0);
+          this.scene.rotate(this.petalTilt + tiltJ, 1, 0, 0);
+          this.scene.translate(0, sH * 0.5, 0);
+          this.scene.scale(sBase, sH, sBase);
+          this.petalGeometry.display();
+          this.scene.popMatrix();
+        }
       }
       this.scene.popMatrix();
 
       this.scene.setActiveShader(this.branchShader);
       this.branchAppearance.apply();
-      return;
+      
+      if (currentDepth === 0) return;
     }
 
     this.branchShader.setUniformsValues({ uLength: currentLength });

@@ -99,7 +99,7 @@ export class MyScene extends CGFscene {
       ));
     }
 
-    // 3 trees — depth 6, tall trunks, denser branching
+    // 3 trees — depth 5, tall trunks, denser branching
     for (let i = 0; i < TREE_COUNT; i++) {
       const scale = this.r(1.2, 1.8);
       // Trees splay wider — give them a generous buffer
@@ -109,9 +109,9 @@ export class MyScene extends CGFscene {
         this,
         x, y, z,
         scale,
-        6, 28, 5, 0.62,                 // depth, angle°, trunkLength, lengthDecay
+        5, 28, 5, 0.62,                 // depth, angle°, trunkLength, lengthDecay
         0.18, 0.72, 18,                   // initialThickness, thicknessDecay, angleJitter°
-        4, 0.9, 35, 0.35,                 // petalCount, petalSize, petalTilt°, petalJitter
+        8, 0.9, 35, 0.35,                 // petalCount, petalSize, petalTilt°, petalJitter
         null,                             // petalTexture
         this.barkTexture,                 // branchTexture
         this.r(0, 100)                    // seed
