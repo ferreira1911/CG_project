@@ -1,6 +1,7 @@
 import { CGFobject, CGFappearance } from '../../lib/CGF.js';
 import { MyCylinder } from "../geometric/MyCylinder.js";
 import { MyQuad } from "../geometric/MyQuad.js";
+import { MySphere } from "../geometric/MySphere.js";
 
 export class MyFlora extends CGFobject {
   /**
@@ -56,6 +57,7 @@ export class MyFlora extends CGFobject {
     }
 
     this.branchGeometry = new MyCylinder(this.scene, 8, 1);
+    this.jointGeometry = new MySphere(this.scene, 1, 8, 8);
     this.petalGeometry = new MyQuad(this.scene);
   }
 
@@ -128,17 +130,24 @@ export class MyFlora extends CGFobject {
     this.scene.pushMatrix();
     this.scene.translate(0, currentLength, 0);
 
-    const jitterL = (this.rand() - 0.5) * 2 * this.angleJitter;
     this.scene.pushMatrix();
+    this.scene.scale(currentThickness, currentThickness, currentThickness);
+    this.jointGeometry.display();
+    this.scene.popMatrix();
+
+    this.scene.pushMatrix();
+    this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
+    const jitterL = (this.rand() - 0.5) * 2 * this.angleJitter;
     this.scene.rotate(this.angle + jitterL, 0, 0, 1);
     this.drawBranch(currentDepth - 1,
                     currentLength * this.lengthDecay,
                     currentThickness * this.thicknessDecay);
     this.scene.popMatrix();
 
-    const jitterR = (this.rand() - 0.5) * 2 * this.angleJitter;
     this.scene.pushMatrix();
-    this.scene.rotate(-this.angle + jitterR, 0, 0, 1);
+    this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
+    const jitterR = (this.rand() - 0.5) * 2 * this.angleJitter;
+    this.scene.rotate(this.angle + jitterR, 0, 0, 1);
     this.drawBranch(currentDepth - 1,
                     currentLength * this.lengthDecay,
                     currentThickness * this.thicknessDecay);
