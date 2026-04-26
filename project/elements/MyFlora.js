@@ -209,23 +209,38 @@ export class MyFlora extends CGFobject {
     this.scene.pushMatrix();
     this.scene.translate(0, currentLength, 0);
 
+    // Leader branch of the tree
     this.scene.pushMatrix();
     this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
-    const jitterL = (this.rand() - 0.5) * 2 * this.angleJitter;
-    this.scene.rotate(this.angle + jitterL, 0, 0, 1);
+    const jitterMain = (this.rand() - 0.5) * this.angleJitter;
+    // Leader branch goes mostly straight up, bending slightly
+    this.scene.rotate((this.angle * 0.2) + jitterMain, 0, 0, 1);
+    
     this.drawBranch(currentDepth - 1,
                     currentLength * this.lengthDecay,
                     currentThickness * this.thicknessDecay, pass);
     this.scene.popMatrix();
 
-    this.scene.pushMatrix();
-    this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
-    const jitterR = (this.rand() - 0.5) * 2 * this.angleJitter;
-    this.scene.rotate(this.angle + jitterR, 0, 0, 1);
-    this.drawBranch(currentDepth - 1,
-                    currentLength * this.lengthDecay,
-                    currentThickness * this.thicknessDecay, pass);
-    this.scene.popMatrix();
+    // side branches
+    const numSideBranches = Math.floor(1.2 + this.rand() * 1.5); // Usually 1 or 2 side branches
+    for (let b = 0; b < numSideBranches; b++) {
+      this.scene.pushMatrix();
+      this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
+      const jitterSide = (this.rand() - 0.5) * 2 * this.angleJitter;
+      // Side branches point outwards
+      this.scene.rotate(this.angle * (1.0 + this.rand() * 0.5) + jitterSide, 0, 0, 1);
+      
+      // Side branches are shorter and thinner than the leader branch
+
+    
+      const sideLengthDecay = this.lengthDecay * (0.7 + this.rand() * 0.2);
+      const sideThicknessDecay = this.thicknessDecay * 0.75;
+
+      this.drawBranch(currentDepth - 1,
+                      currentLength * sideLengthDecay,
+                      currentThickness * sideThicknessDecay, pass);
+      this.scene.popMatrix();
+    }
 
     this.scene.popMatrix();
   }
