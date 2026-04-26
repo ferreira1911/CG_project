@@ -1,6 +1,6 @@
 import { CGFobject, CGFappearance } from '../../lib/CGF.js';
 import { MyCylinder } from "../geometric/MyCylinder.js";
-import { MyQuad } from "../geometric/MyQuad.js";
+import { MyLeafCluster } from "../geometric/MyLeafCluster.js";
 import { MySphere } from "../geometric/MySphere.js";
 
 export class MyFlora extends CGFobject {
@@ -63,7 +63,7 @@ export class MyFlora extends CGFobject {
     }
 
     this.branchGeometry = new MyCylinder(this.scene, 8, 1);
-    this.petalGeometry = new MyQuad(this.scene);
+    this.petalGeometry = new MyLeafCluster(this.scene);
     this.branchShader = this.scene.branchShader;
   }
 
@@ -117,7 +117,7 @@ export class MyFlora extends CGFobject {
   }
 
   drawBranch(currentDepth, currentLength, currentThickness, pass = 'both') {
-    if (currentDepth <= 1) {
+    if (currentDepth <= 2) {
       if (pass === 'both' || pass === 'petals') {
         if (pass === 'both') {
           this.scene.setActiveShader(this.scene.defaultShader);
@@ -126,7 +126,8 @@ export class MyFlora extends CGFobject {
         this.scene.pushMatrix();
       }
 
-      const drawLeaves = currentDepth === 0 || this.rand() < 0.3;
+      // Draw leaves on more inner branches to increase density
+      const drawLeaves = currentDepth === 0 || this.rand() < 0.6;
       if (drawLeaves) {
         for (let i = 0; i < this.petalCount; i++) {
           const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
@@ -165,6 +166,44 @@ export class MyFlora extends CGFobject {
       this.scene.scale(currentThickness, currentLength, currentThickness);
       this.branchGeometry.display();
       this.scene.popMatrix();
+    }
+
+    let numMidLeaves = 0;
+    if (currentDepth > 0 && currentDepth <= 3) {
+      if (this.rand() < 0.6) {
+        numMidLeaves = Math.floor(1 + this.rand() * 2);
+      }
+    }
+    
+    for (let i = 0; i < numMidLeaves; i++) {
+      const heightPos = currentLength * (0.2 + this.rand() * 0.6);
+      const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
+      const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
+      const angleY = this.rand() * Math.PI * 2;
+      
+      if (pass === 'both' || pass === 'petals') {
+        if (pass === 'both') {
+          this.scene.setActiveShader(this.scene.defaultShader);
+          this.petalAppearance.apply();
+        }
+
+        const sBase = 0.2 * this.petalSize * sizeJ * 0.7;
+        const sH    = sBase * 1.5;
+
+        this.scene.pushMatrix();
+        this.scene.translate(0, heightPos, 0);
+        this.scene.rotate(angleY, 0, 1, 0);
+        this.scene.rotate(this.petalTilt + tiltJ + 0.5, 1, 0, 0);
+        this.scene.translate(0, sH * 0.5, 0);
+        this.scene.scale(sBase, sH, sBase);
+        this.petalGeometry.display();
+        this.scene.popMatrix();
+
+        if (pass === 'both') {
+          this.scene.setActiveShader(this.branchShader);
+          this.branchAppearance.apply();
+        }
+      }
     }
 
     this.scene.pushMatrix();
