@@ -17,6 +17,7 @@ export class MyCylinder extends CGFobject {
         this.vertices = [];
         this.indices = [];
         this.normals = [];
+        this.texCoords = [];
 
         var ang = 0;
         var alphaAng = 2*Math.PI/this.slices;
@@ -34,8 +35,9 @@ export class MyCylinder extends CGFobject {
 
                 this.vertices.push(x, y, z);
                 
-                // Normals point outward horizontally, so Y is 0
                 this.normals.push(x, 0, z); 
+
+                this.texCoords.push(i / this.slices, 1 - y);
 
                 ang += alphaAng;
             }
