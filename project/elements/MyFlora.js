@@ -1,6 +1,6 @@
 import { CGFobject, CGFappearance } from '../../lib/CGF.js';
 import { MyCylinder } from "../geometric/MyCylinder.js";
-import { MyQuad } from "../geometric/MyQuad.js";
+import { MyLeafCluster } from "../geometric/MyLeafCluster.js";
 import { MySphere } from "../geometric/MySphere.js";
 
 export class MyFlora extends CGFobject {
@@ -63,7 +63,7 @@ export class MyFlora extends CGFobject {
     }
 
     this.branchGeometry = new MyCylinder(this.scene, 8, 1);
-    this.petalGeometry = new MyQuad(this.scene);
+    this.petalGeometry = new MyLeafCluster(this.scene);
     this.branchShader = this.scene.branchShader;
   }
 
@@ -117,7 +117,7 @@ export class MyFlora extends CGFobject {
   }
 
   drawBranch(currentDepth, currentLength, currentThickness, pass = 'both') {
-    if (currentDepth <= 1) {
+    if (currentDepth <= 2) {
       if (pass === 'both' || pass === 'petals') {
         if (pass === 'both') {
           this.scene.setActiveShader(this.scene.defaultShader);
@@ -126,7 +126,8 @@ export class MyFlora extends CGFobject {
         this.scene.pushMatrix();
       }
 
-      const drawLeaves = currentDepth === 0 || this.rand() < 0.3;
+      // Draw leaves on more inner branches to increase density
+      const drawLeaves = currentDepth === 0 || this.rand() < 0.6;
       if (drawLeaves) {
         for (let i = 0; i < this.petalCount; i++) {
           const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
@@ -167,26 +168,79 @@ export class MyFlora extends CGFobject {
       this.scene.popMatrix();
     }
 
+    let numMidLeaves = 0;
+    if (currentDepth > 0 && currentDepth <= 3) {
+      if (this.rand() < 0.6) {
+        numMidLeaves = Math.floor(1 + this.rand() * 2);
+      }
+    }
+    
+    for (let i = 0; i < numMidLeaves; i++) {
+      const heightPos = currentLength * (0.2 + this.rand() * 0.6);
+      const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
+      const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
+      const angleY = this.rand() * Math.PI * 2;
+      
+      if (pass === 'both' || pass === 'petals') {
+        if (pass === 'both') {
+          this.scene.setActiveShader(this.scene.defaultShader);
+          this.petalAppearance.apply();
+        }
+
+        const sBase = 0.2 * this.petalSize * sizeJ * 0.7;
+        const sH    = sBase * 1.5;
+
+        this.scene.pushMatrix();
+        this.scene.translate(0, heightPos, 0);
+        this.scene.rotate(angleY, 0, 1, 0);
+        this.scene.rotate(this.petalTilt + tiltJ + 0.5, 1, 0, 0);
+        this.scene.translate(0, sH * 0.5, 0);
+        this.scene.scale(sBase, sH, sBase);
+        this.petalGeometry.display();
+        this.scene.popMatrix();
+
+        if (pass === 'both') {
+          this.scene.setActiveShader(this.branchShader);
+          this.branchAppearance.apply();
+        }
+      }
+    }
+
     this.scene.pushMatrix();
     this.scene.translate(0, currentLength, 0);
 
+    // Leader branch of the tree
     this.scene.pushMatrix();
     this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
-    const jitterL = (this.rand() - 0.5) * 2 * this.angleJitter;
-    this.scene.rotate(this.angle + jitterL, 0, 0, 1);
+    const jitterMain = (this.rand() - 0.5) * this.angleJitter;
+    // Leader branch goes mostly straight up, bending slightly
+    this.scene.rotate((this.angle * 0.2) + jitterMain, 0, 0, 1);
+    
     this.drawBranch(currentDepth - 1,
                     currentLength * this.lengthDecay,
                     currentThickness * this.thicknessDecay, pass);
     this.scene.popMatrix();
 
-    this.scene.pushMatrix();
-    this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
-    const jitterR = (this.rand() - 0.5) * 2 * this.angleJitter;
-    this.scene.rotate(this.angle + jitterR, 0, 0, 1);
-    this.drawBranch(currentDepth - 1,
-                    currentLength * this.lengthDecay,
-                    currentThickness * this.thicknessDecay, pass);
-    this.scene.popMatrix();
+    // side branches
+    const numSideBranches = Math.floor(1.2 + this.rand() * 1.5); // Usually 1 or 2 side branches
+    for (let b = 0; b < numSideBranches; b++) {
+      this.scene.pushMatrix();
+      this.scene.rotate(this.rand() * Math.PI * 2, 0, 1, 0);
+      const jitterSide = (this.rand() - 0.5) * 2 * this.angleJitter;
+      // Side branches point outwards
+      this.scene.rotate(this.angle * (1.0 + this.rand() * 0.5) + jitterSide, 0, 0, 1);
+      
+      // Side branches are shorter and thinner than the leader branch
+
+    
+      const sideLengthDecay = this.lengthDecay * (0.7 + this.rand() * 0.2);
+      const sideThicknessDecay = this.thicknessDecay * 0.75;
+
+      this.drawBranch(currentDepth - 1,
+                      currentLength * sideLengthDecay,
+                      currentThickness * sideThicknessDecay, pass);
+      this.scene.popMatrix();
+    }
 
     this.scene.popMatrix();
   }
