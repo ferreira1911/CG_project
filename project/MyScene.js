@@ -96,7 +96,8 @@ export class MyScene extends CGFscene {
         1.5, 45, 0.3,                     // petalSize, petalTilt°, petalJitter
         null,                             // petalTexture
         null,                             // branchTexture
-        this.r(0, 100)                    // seed
+        this.r(0, 100),                   // seed
+        false                             // isTree
       ));
     }
 
@@ -115,7 +116,8 @@ export class MyScene extends CGFscene {
         8, 0.9, 35, 0.35,                 // petalCount, petalSize, petalTilt°, petalJitter
         null,                             // petalTexture
         this.barkTexture,                 // branchTexture
-        this.r(0, 100)                    // seed
+        this.r(0, 100),                   // seed
+        true                              // isTree
       ));
     }
 

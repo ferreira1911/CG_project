@@ -72,7 +72,8 @@ export class MyFlora extends CGFobject {
               petalCount, petalSize, petalTilt, petalJitter,
               petalTexture,
               branchTexture,
-              seed) {
+              seed,
+              isTree = false) {
     super(scene);
 
     this.x = x; this.y = y; this.z = z;
@@ -92,6 +93,7 @@ export class MyFlora extends CGFobject {
     this.petalJitter = petalJitter;
 
     this.seed = seed;
+    this.isTree = isTree;
 
     this.initMaterials();
 
@@ -134,10 +136,19 @@ export class MyFlora extends CGFobject {
     this.branchAppearance.setSpecular(0.02, 0.02, 0.02, 1.0);
     this.branchAppearance.setShininess(2.0);
 
+    // Petals/Leaves
     this.petalAppearance = new CGFappearance(this.scene);
-    this.petalAppearance.setAmbient(0.1, 0.3, 0.1, 1.0);
-    this.petalAppearance.setDiffuse(0.2, 0.6, 0.2, 1.0);
-    this.petalAppearance.setSpecular(0.1, 0.1, 0.1, 1.0);
+    if (this.isTree) {
+        // More "leafy" green for trees
+        this.petalAppearance.setAmbient(0.1, 0.2, 0.05, 1.0);
+        this.petalAppearance.setDiffuse(0.2, 0.4, 0.1, 1.0);
+        this.petalAppearance.setSpecular(0.05, 0.05, 0.05, 1.0);
+    } else {
+        // verde mais brilhante na vegetação rasteira
+        this.petalAppearance.setAmbient(0.1, 0.3, 0.1, 1.0);
+        this.petalAppearance.setDiffuse(0.3, 0.7, 0.3, 1.0);
+        this.petalAppearance.setSpecular(0.1, 0.1, 0.1, 1.0);
+    }
     this.petalAppearance.setShininess(10.0);
   }
 
