@@ -228,7 +228,14 @@ export class MyScene extends CGFscene {
       this.setActiveShader(this.defaultShader);
     }
 
-    for (const f of this.floras) f.display();
+    // Batch flora: one shader/uniform set for all branches, then for all leaves.
+    if (this.floras.length > 0) {
+      this.setActiveShader(this.branchShader);
+      this.branchShader.setUniformsValues({ uLength: 1.0 });
+      for (const f of this.floras) f.displayBranches();
+      this.setActiveShader(this.defaultShader);
+      for (const f of this.floras) f.displayLeaves();
+    }
 
     if (this.grass) this.grass.display();
     // ---- END Primitive drawing section
