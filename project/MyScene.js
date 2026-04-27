@@ -3,10 +3,11 @@ import { MyPanorama } from "./elements/MyPanorama.js";
 import { MyTerrain } from "./elements/MyTerrain.js";
 import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
+import { MyGrass } from "./elements/MyGrass.js";
 
 const ROCK_COUNT   = 20;
-const FLOWER_COUNT = 30;
-const TREE_COUNT   = 10;
+const FLOWER_COUNT = 20;
+const TREE_COUNT   = 8;
 
 /**
  * MyScene
@@ -117,6 +118,8 @@ export class MyScene extends CGFscene {
         this.r(0, 100)                    // seed
       ));
     }
+
+    this.grass = new MyGrass(this, this.grassTexture, this.terrain);
   }
 
   initLights() {
@@ -145,6 +148,7 @@ export class MyScene extends CGFscene {
     this.rockColorMap2 = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
     this.rockNormalMap = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
     this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
+    this.grassTexture = new CGFtexture(this, './resources/textures/grass.png');
     this.barkTexture = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
   }
 
@@ -185,6 +189,7 @@ export class MyScene extends CGFscene {
     if (this.startTime === undefined) this.startTime = t;
     this.time = (t - this.startTime) / 1000;
     this.panoramaShader.setUniformsValues({ time: this.time });
+    if (this.grass) this.grass.setTime(this.time);
   }
 
   display() {
@@ -223,7 +228,16 @@ export class MyScene extends CGFscene {
       this.setActiveShader(this.defaultShader);
     }
 
-    for (const f of this.floras) f.display();
+    // Batch flora: one shader/uniform set for all branches, then for all leaves.
+    if (this.floras.length > 0) {
+      this.setActiveShader(this.branchShader);
+      this.branchShader.setUniformsValues({ uLength: 1.0 });
+      for (const f of this.floras) f.displayBranches();
+      this.setActiveShader(this.defaultShader);
+      for (const f of this.floras) f.displayLeaves();
+    }
+
+    if (this.grass) this.grass.display();
     // ---- END Primitive drawing section
   }
 }
