@@ -250,18 +250,26 @@ export class MyFlora extends CGFobject {
   // pass='both', but emits geometry into the accumulating buffers instead of
   // issuing draw calls.
   _bake(currentDepth, currentLength, currentThickness) {
-    // Leaves on inner branches (depths 0, 1, 2)
-    if (currentDepth <= 2) {
-      const drawLeaves = currentDepth === 0 || this.rand() < 0.6;
-      if (drawLeaves) {
-        for (let i = 0; i < this.petalCount; i++) {
+    const leafStartDepth = this.isTree ? 3 : 2;
+    if (currentDepth <= leafStartDepth) {
+      const leafProb = this.isTree ? 1.0 : 0.6;
+      if (this.rand() < leafProb) {
+        // Multiplier for trees to get that "full" look
+        const count = this.isTree ? this.petalCount * 4 : this.petalCount;
+        for (let i = 0; i < count; i++) {
           const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
           const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
-          const sBase = 0.2 * this.petalSize * sizeJ;
-          const sH    = sBase * 1.5;
+          
+          // Larger leaves for trees to fill volume
+          const sBase = 0.2 * this.petalSize * sizeJ * (this.isTree ? 2.2 : 1.0);
+          const sH    = sBase * (this.isTree ? 1.8 : 1.5);
 
           this._push();
-          this._rotateY(i * (Math.PI * 2) / this.petalCount);
+          // Jitter position for volume depth
+          if (this.isTree) {
+              this._translate((this.rand()-0.5)*0.5, (this.rand()-0.5)*0.5, (this.rand()-0.5)*0.5);
+          }
+          this._rotateY(i * (Math.PI * 2) / count + this.rand());
           this._rotateX(this.petalTilt + tiltJ);
           this._translate(0, sH * 0.5, 0);
           this._scale(sBase, sH, sBase);
@@ -269,43 +277,39 @@ export class MyFlora extends CGFobject {
           this._pop();
         }
       }
-
       if (currentDepth === 0) return;
     }
 
-    // Branch cylinder
     this._push();
     this._scale(currentThickness, currentLength, currentThickness);
     this._emitCylinder(currentLength);
     this._pop();
 
-    // Mid-branch leaves
-    let numMidLeaves = 0;
     if (currentDepth > 0 && currentDepth <= 3) {
-      if (this.rand() < 0.6) {
-        numMidLeaves = Math.floor(1 + this.rand() * 2);
+      const midLeafProb = this.isTree ? 0.9 : 0.6;
+      if (this.rand() < midLeafProb) {
+        const numMidLeaves = Math.floor(1 + this.rand() * (this.isTree ? 6 : 2));
+        for (let i = 0; i < numMidLeaves; i++) {
+          const heightPos = currentLength * (0.2 + this.rand() * 0.6);
+          const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
+          const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
+          const angleY = this.rand() * Math.PI * 2;
+
+          const sBase = 0.2 * this.petalSize * sizeJ * (this.isTree ? 1.5 : 0.7);
+          const sH    = sBase * 1.5;
+
+          this._push();
+          this._translate(0, heightPos, 0);
+          this._rotateY(angleY);
+          this._rotateX(this.petalTilt + tiltJ + 0.5);
+          this._translate(0, sH * 0.5, 0);
+          this._scale(sBase, sH, sBase);
+          this._emitLeafCluster();
+          this._pop();
+        }
       }
     }
-    for (let i = 0; i < numMidLeaves; i++) {
-      const heightPos = currentLength * (0.2 + this.rand() * 0.6);
-      const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
-      const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
-      const angleY = this.rand() * Math.PI * 2;
 
-      const sBase = 0.2 * this.petalSize * sizeJ * 0.7;
-      const sH    = sBase * 1.5;
-
-      this._push();
-      this._translate(0, heightPos, 0);
-      this._rotateY(angleY);
-      this._rotateX(this.petalTilt + tiltJ + 0.5);
-      this._translate(0, sH * 0.5, 0);
-      this._scale(sBase, sH, sBase);
-      this._emitLeafCluster();
-      this._pop();
-    }
-
-    // Recurse: leader + side branches
     this._push();
     this._translate(0, currentLength, 0);
 
@@ -318,7 +322,8 @@ export class MyFlora extends CGFobject {
                currentThickness * this.thicknessDecay);
     this._pop();
 
-    const numSideBranches = Math.floor(1.2 + this.rand() * 1.5);
+    const branchFactor = this.isTree ? 2.0 : 1.2;
+    const numSideBranches = Math.floor(branchFactor + this.rand() * (this.isTree ? 3.0 : 1.5));
     for (let b = 0; b < numSideBranches; b++) {
       this._push();
       this._rotateY(this.rand() * Math.PI * 2);
