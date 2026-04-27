@@ -94,12 +94,13 @@ export class MyScene extends CGFscene {
         0.05, 0.6, 15,                    // initialThickness, thicknessDecay, angleJitter°
         this.r(5, 7) | 0,                 // petalCount
         1.5, 45, 0.3,                     // petalSize, petalTilt°, petalJitter
-        null,                             // petalTexture (wire later)
+        null,                             // petalTexture
+        null,                             // branchTexture
         this.r(0, 100)                    // seed
       ));
     }
 
-    // 3 trees — depth 6, tall trunks, denser branching
+    // 3 trees — depth 5, tall trunks, denser branching
     for (let i = 0; i < TREE_COUNT; i++) {
       const scale = this.r(1.2, 1.8);
       // Trees splay wider — give them a generous buffer
@@ -109,10 +110,11 @@ export class MyScene extends CGFscene {
         this,
         x, y, z,
         scale,
-        6, 28, 5, 0.62,                 // depth, angle°, trunkLength, lengthDecay
+        5, 28, 5, 0.62,                 // depth, angle°, trunkLength, lengthDecay
         0.18, 0.72, 18,                   // initialThickness, thicknessDecay, angleJitter°
-        4, 0.9, 35, 0.35,                 // petalCount, petalSize, petalTilt°, petalJitter
-        null,                             // petalTexture (wire later — leaves)
+        8, 0.9, 35, 0.35,                 // petalCount, petalSize, petalTilt°, petalJitter
+        null,                             // petalTexture
+        this.barkTexture,                 // branchTexture
         this.r(0, 100)                    // seed
       ));
     }
@@ -147,6 +149,7 @@ export class MyScene extends CGFscene {
     this.rockNormalMap = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
     this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
     this.grassTexture = new CGFtexture(this, './resources/textures/grass.png');
+    this.barkTexture = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
   }
 
   initShaders() {
@@ -167,6 +170,8 @@ export class MyScene extends CGFscene {
       uDeformScale: 0.15,
       uSeed: 0.0
     });
+
+    this.branchShader = new CGFshader(this.gl, "./shaders/branch.vert", "./shaders/branch.frag");
   }
 
   r(min, max) {
