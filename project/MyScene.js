@@ -3,6 +3,7 @@ import { MyPanorama } from "./elements/MyPanorama.js";
 import { MyTerrain } from "./elements/MyTerrain.js";
 import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
+import { MyGrass } from "./elements/MyGrass.js";
 
 const ROCK_COUNT   = 20;
 const FLOWER_COUNT = 20;
@@ -115,6 +116,8 @@ export class MyScene extends CGFscene {
         this.r(0, 100)                    // seed
       ));
     }
+
+    this.grass = new MyGrass(this, this.grassTexture, this.terrain);
   }
 
   initLights() {
@@ -143,6 +146,7 @@ export class MyScene extends CGFscene {
     this.rockColorMap2 = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
     this.rockNormalMap = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
     this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
+    this.grassTexture = new CGFtexture(this, './resources/textures/grass.png');
   }
 
   initShaders() {
@@ -180,6 +184,7 @@ export class MyScene extends CGFscene {
     if (this.startTime === undefined) this.startTime = t;
     this.time = (t - this.startTime) / 1000;
     this.panoramaShader.setUniformsValues({ time: this.time });
+    if (this.grass) this.grass.setTime(this.time);
   }
 
   display() {
@@ -219,6 +224,8 @@ export class MyScene extends CGFscene {
     }
 
     for (const f of this.floras) f.display();
+
+    if (this.grass) this.grass.display();
     // ---- END Primitive drawing section
   }
 }

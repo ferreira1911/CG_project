@@ -1,20 +1,6 @@
 import { CGFobject, CGFappearance } from '../../lib/CGF.js';
-
-const CYLINDER_SLICES = 8;
-
-// Holds a pre-built vertex/normal/index/UV array as a single CGFobject.
-// One draw call regardless of how many primitives went into it.
-class BakedMesh extends CGFobject {
-  constructor(scene, vertices, normals, indices, texCoords) {
-    super(scene);
-    this.vertices = vertices;
-    this.normals = normals;
-    this.indices = indices;
-    if (texCoords) this.texCoords = texCoords;
-    this.primitiveType = scene.gl.TRIANGLES;
-    this.initGLBuffers();
-  }
-}
+import { MyCylinder } from "../geometric/MyCylinder.js";
+import { MyQuad } from "../geometric/MyQuad.js";
 
 export class MyFlora extends CGFobject {
   /**
@@ -69,25 +55,8 @@ export class MyFlora extends CGFobject {
       this.petalAppearance.setTextureWrap('REPEAT', 'REPEAT');
     }
 
-    // Bake the entire L-system into two static meshes (branches, petals).
-    // After this, display() is two draw calls regardless of recursion depth.
-    this._bv = []; this._bn = []; this._bi = [];
-    this._pv = []; this._pn = []; this._pi = []; this._pu = [];
-    this._mat = mat4.create();
-    this._matStack = [];
-    this.randCounter = 0;
-
-    this._bake(this.maxDepth, this.trunkLength, this.initialThickness);
-
-    this.branchMesh = new BakedMesh(this.scene, this._bv, this._bn, this._bi);
-    this.petalMesh = this._pi.length > 0
-      ? new BakedMesh(this.scene, this._pv, this._pn, this._pi, this._pu)
-      : null;
-
-    this._bv = this._bn = this._bi = null;
-    this._pv = this._pn = this._pi = this._pu = null;
-    this._mat = null;
-    this._matStack = null;
+    this.branchGeometry = new MyCylinder(this.scene, 8, 1);
+    this.petalGeometry = new MyQuad(this.scene);
   }
 
   initMaterials() {
@@ -107,173 +76,73 @@ export class MyFlora extends CGFobject {
   }
 
   // Deterministic pseudo-random in [0,1) keyed by (seed, call index).
+  // Reset randCounter each display() so the same plant is identical every frame.
   rand() {
     this.randCounter++;
     const x = Math.sin(this.randCounter * 12.9898 + this.seed * 78.233) * 43758.5453;
     return x - Math.floor(x);
   }
 
-  // ---- Manual matrix stack used during baking ----
-  _push() { this._matStack.push(mat4.clone(this._mat)); }
-  _pop()  { this._mat = this._matStack.pop(); }
-  _translate(x, y, z) { mat4.translate(this._mat, this._mat, [x, y, z]); }
-  _rotateX(r) { mat4.rotateX(this._mat, this._mat, r); }
-  _rotateY(r) { mat4.rotateY(this._mat, this._mat, r); }
-  _rotateZ(r) { mat4.rotateZ(this._mat, this._mat, r); }
-  _scale(x, y, z) { mat4.scale(this._mat, this._mat, [x, y, z]); }
-
-  // Inverse-transpose of the upper-left 3x3 of this._mat (column-major mat3).
-  // Inlined because the CGF gl-matrix bundle is missing mat3.fromMat4 etc.
-  _normalMatrix() {
-    const m = this._mat;
-    const a = m[0], b = m[4], c = m[8];
-    const d = m[1], e = m[5], f = m[9];
-    const g = m[2], h = m[6], i = m[10];
-    const det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
-    const k = det !== 0 ? 1 / det : 0;
-    return [
-      (e * i - f * h) * k,
-      (c * h - b * i) * k,
-      (b * f - c * e) * k,
-      (f * g - d * i) * k,
-      (a * i - c * g) * k,
-      (c * d - a * f) * k,
-      (d * h - e * g) * k,
-      (b * g - a * h) * k,
-      (a * e - b * d) * k,
-    ];
-  }
-
-  _txPos(lx, ly, lz, out) {
-    const m = this._mat;
-    out[0] = m[0] * lx + m[4] * ly + m[8]  * lz + m[12];
-    out[1] = m[1] * lx + m[5] * ly + m[9]  * lz + m[13];
-    out[2] = m[2] * lx + m[6] * ly + m[10] * lz + m[14];
-  }
-
-  _txNorm(nm, nx, ny, nz, out) {
-    const x = nm[0] * nx + nm[3] * ny + nm[6] * nz;
-    const y = nm[1] * nx + nm[4] * ny + nm[7] * nz;
-    const z = nm[2] * nx + nm[5] * ny + nm[8] * nz;
-    const len = Math.hypot(x, y, z) || 1;
-    out[0] = x / len; out[1] = y / len; out[2] = z / len;
-  }
-
-  // Emit one cylinder (8 slices, 1 stack, y=0..1) under the current matrix.
-  // Mirrors MyCylinder(scene, 8, 1).
-  _emitCylinder() {
-    const nm = this._normalMatrix();
-    const base = this._bv.length / 3;
-    const tmp = [0, 0, 0];
-    for (let s = 0; s <= 1; s++) {
-      for (let i = 0; i <= CYLINDER_SLICES; i++) {
-        const a = (i / CYLINDER_SLICES) * Math.PI * 2;
-        const lx = Math.cos(a), lz = Math.sin(a);
-        this._txPos(lx, s, lz, tmp);
-        this._bv.push(tmp[0], tmp[1], tmp[2]);
-        this._txNorm(nm, lx, 0, lz, tmp);
-        this._bn.push(tmp[0], tmp[1], tmp[2]);
-      }
-    }
-    const ring = CYLINDER_SLICES + 1;
-    for (let i = 0; i < CYLINDER_SLICES; i++) {
-      const cur = base + i, nxt = cur + 1;
-      const top = cur + ring, topNext = top + 1;
-      this._bi.push(cur, nxt, top, nxt, topNext, top);
-    }
-  }
-
-  // Emit one double-sided quad (matches MyQuad: -0.5..0.5 in XY, both faces).
-  _emitQuad() {
-    const nm = this._normalMatrix();
-    const base = this._pv.length / 3;
-    const localPos = [
-      -0.5, -0.5, 0,   0.5, -0.5, 0,   -0.5, 0.5, 0,   0.5, 0.5, 0,
-      -0.5, -0.5, 0,   0.5, -0.5, 0,   -0.5, 0.5, 0,   0.5, 0.5, 0,
-    ];
-    const localNor = [
-      0, 0,  1,  0, 0,  1,  0, 0,  1,  0, 0,  1,
-      0, 0, -1,  0, 0, -1,  0, 0, -1,  0, 0, -1,
-    ];
-    const uvs = [0,1, 1,1, 0,0, 1,0, 0,1, 1,1, 0,0, 1,0];
-    const tmp = [0, 0, 0];
-    for (let i = 0; i < 8; i++) {
-      this._txPos(localPos[i*3], localPos[i*3+1], localPos[i*3+2], tmp);
-      this._pv.push(tmp[0], tmp[1], tmp[2]);
-      this._txNorm(nm, localNor[i*3], localNor[i*3+1], localNor[i*3+2], tmp);
-      this._pn.push(tmp[0], tmp[1], tmp[2]);
-      this._pu.push(uvs[i*2], uvs[i*2+1]);
-    }
-    this._pi.push(
-      base + 0, base + 1, base + 2,
-      base + 1, base + 3, base + 2,
-      base + 6, base + 5, base + 4,
-      base + 6, base + 7, base + 5
-    );
-  }
-
-  // Same recursion shape as the old drawBranch, but emits geometry into
-  // the accumulating buffers instead of issuing draw calls.
-  _bake(currentDepth, currentLength, currentThickness) {
-    if (currentDepth === 0) {
-      this._push();
-      for (let i = 0; i < this.petalCount; i++) {
-        const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
-        const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
-        const sBase = currentLength * this.petalSize * sizeJ;
-        const sH    = sBase * 1.3;
-
-        this._push();
-        this._rotateY(i * (Math.PI * 2) / this.petalCount);
-        this._rotateX(this.petalTilt + tiltJ);
-        this._translate(0, sH * 0.5, 0);
-        this._scale(sBase, sH, sBase);
-        this._emitQuad();
-        this._pop();
-      }
-      this._pop();
-      return;
-    }
-
-    this._push();
-    this._scale(currentThickness, currentLength, currentThickness);
-    this._emitCylinder();
-    this._pop();
-
-    this._push();
-    this._translate(0, currentLength, 0);
-
-    const jitterL = (this.rand() - 0.5) * 2 * this.angleJitter;
-    this._push();
-    this._rotateZ(this.angle + jitterL);
-    this._bake(currentDepth - 1,
-               currentLength * this.lengthDecay,
-               currentThickness * this.thicknessDecay);
-    this._pop();
-
-    const jitterR = (this.rand() - 0.5) * 2 * this.angleJitter;
-    this._push();
-    this._rotateZ(-this.angle + jitterR);
-    this._bake(currentDepth - 1,
-               currentLength * this.lengthDecay,
-               currentThickness * this.thicknessDecay);
-    this._pop();
-
-    this._pop();
-  }
-
   display() {
+    this.randCounter = 0;
+
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
     this.scene.scale(this.scale, this.scale, this.scale);
+    this.drawBranch(this.maxDepth, this.trunkLength, this.initialThickness);
+    this.scene.popMatrix();
+  }
+
+  drawBranch(currentDepth, currentLength, currentThickness) {
+    if (currentDepth === 0) {
+      this.petalAppearance.apply();
+
+      this.scene.pushMatrix();
+      for (let i = 0; i < this.petalCount; i++) {
+        // Per-petal jitter: same param drives both size and tilt deviation
+        const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
+        const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter; // small angle in radians
+        // Scale petals to the tip branch so a smaller plant gets smaller flowers
+        const sBase = currentLength * this.petalSize * sizeJ;
+        const sH    = sBase * 1.3;
+
+        this.scene.pushMatrix();
+        this.scene.rotate(i * (Math.PI * 2) / this.petalCount, 0, 1, 0);
+        this.scene.rotate(this.petalTilt + tiltJ, 1, 0, 0);
+        this.scene.translate(0, sH * 0.5, 0);
+        this.scene.scale(sBase, sH, sBase);
+        this.petalGeometry.display();
+        this.scene.popMatrix();
+      }
+      this.scene.popMatrix();
+      return;
+    }
 
     this.branchAppearance.apply();
-    this.branchMesh.display();
 
-    if (this.petalMesh) {
-      this.petalAppearance.apply();
-      this.petalMesh.display();
-    }
+    this.scene.pushMatrix();
+    this.scene.scale(currentThickness, currentLength, currentThickness);
+    this.branchGeometry.display();
+    this.scene.popMatrix();
+
+    this.scene.pushMatrix();
+    this.scene.translate(0, currentLength, 0);
+
+    const jitterL = (this.rand() - 0.5) * 2 * this.angleJitter;
+    this.scene.pushMatrix();
+    this.scene.rotate(this.angle + jitterL, 0, 0, 1);
+    this.drawBranch(currentDepth - 1,
+                    currentLength * this.lengthDecay,
+                    currentThickness * this.thicknessDecay);
+    this.scene.popMatrix();
+
+    const jitterR = (this.rand() - 0.5) * 2 * this.angleJitter;
+    this.scene.pushMatrix();
+    this.scene.rotate(-this.angle + jitterR, 0, 0, 1);
+    this.drawBranch(currentDepth - 1,
+                    currentLength * this.lengthDecay,
+                    currentThickness * this.thicknessDecay);
+    this.scene.popMatrix();
 
     this.scene.popMatrix();
   }
