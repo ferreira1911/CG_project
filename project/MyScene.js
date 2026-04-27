@@ -5,8 +5,8 @@ import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 
 const ROCK_COUNT   = 20;
-const FLOWER_COUNT = 30;
-const TREE_COUNT   = 10;
+const FLOWER_COUNT = 20;
+const TREE_COUNT   = 8;
 
 /**
  * MyScene
