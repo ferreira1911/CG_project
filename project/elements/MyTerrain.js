@@ -10,8 +10,8 @@ export class MyTerrain extends CGFobject {
 
         // World extent of the terrain (matches the scale() in display())
         this.terrainSize = 400;
-        // Must match `heightMapColor.r * 8.0` in terrain.vert
-        this.maxHeight = 8.0;
+        // Must match `heightMapColor.r * 100.0` in terrain.vert
+        this.maxHeight = 100.0;
 
         // Async CPU-side sampling of heightmap + mask
         this.ready = false;
@@ -45,21 +45,29 @@ export class MyTerrain extends CGFobject {
         });
     }
 
-    // Sample a texture image's red channel at world (x,z). Returns 0 if data not ready
-    // or the point is outside the terrain. CGF doesn't flip Y on upload, so v in the
-    // shader maps directly to the image row.
+    // Bilinear sample of a texture image's red channel at world (x,z). Returns 0
+    // if data not ready or the point is outside the terrain. Matches the GPU's
+    // linear filtering so elements sit on the interpolated surface instead of
+    // stepping per heightmap texel.
     _sampleR(data, w, h, worldX, worldZ) {
         if (!data) return 0;
         const half = this.terrainSize / 2;
         const u = (worldX + half) / this.terrainSize;
         const v = (worldZ + half) / this.terrainSize;
         if (u < 0 || u > 1 || v < 0 || v > 1) return 0;
-        const px = Math.min(w - 1, Math.floor(u * (w - 1)));
-        const py = Math.min(h - 1, Math.floor(v * (h - 1)));
-        return data[(py * w + px) * 4];
+        const fx = u * (w - 1);
+        const fy = v * (h - 1);
+        const x0 = Math.floor(fx), y0 = Math.floor(fy);
+        const x1 = Math.min(w - 1, x0 + 1);
+        const y1 = Math.min(h - 1, y0 + 1);
+        const tx = fx - x0;
+        const ty = fy - y0;
+        const r0 = data[(y0 * w + x0) * 4] * (1 - tx) + data[(y0 * w + x1) * 4] * tx;
+        const r1 = data[(y1 * w + x0) * 4] * (1 - tx) + data[(y1 * w + x1) * 4] * tx;
+        return r0 * (1 - ty) + r1 * ty;
     }
 
-    // Mirrors `heightMap.r * 8.0` from terrain.vert
+    // Mirrors `heightMap.r * 100.0` from terrain.vert
     heightAt(worldX, worldZ) {
         return (this._sampleR(this._heightData, this._heightW, this._heightH, worldX, worldZ) / 255) * this.maxHeight;
     }

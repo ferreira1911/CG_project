@@ -21,7 +21,7 @@ void main() {
     // Tint warmer toward the root (drier base, greener tip) and darken slightly.
     vec3 rootTint = vec3(0.55, 0.50, 0.30);
     c.rgb = mix(c.rgb * rootTint, c.rgb, vTipness);
-    c.rgb *= mix(0.7, 1.0, vTipness);
+    c.rgb *= mix(0.7, 0.82, vTipness);
 
     gl_FragColor = c;
 }

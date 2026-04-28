@@ -1,11 +1,11 @@
 import { CGFobject, CGFappearance, CGFshader } from '../../lib/CGF.js';
 
-const GRASS_COUNT     = 800;
-const GRASS_RANGE     = 100;   // half-extent of the scatter region
+const GRASS_COUNT     = 5000;
+const GRASS_RANGE     = 150;   // half-extent of the scatter region
 const BLADE_WIDTH     = 3.0;   // patch is wide enough that the tiled texture reads as a strip
-const BLADE_HEIGHT    = 2.2;
+const BLADE_HEIGHT    = 2.5;
 const TILES_U         = 3;     // how many times grass.png repeats horizontally per patch
-const WIND_AMPLITUDE  = 0.35;
+const WIND_AMPLITUDE  = 0.2;
 const WIND_FREQUENCY  = 1.4;
 const PLACEMENT_TRIES = GRASS_COUNT * 5;
 

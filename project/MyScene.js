@@ -1,4 +1,4 @@
-import { CGFscene, CGFcamera, CGFaxis, CGFtexture, CGFshader } from "../lib/CGF.js";
+import { CGFscene, CGFcamera, CGFaxis, CGFtexture, CGFshader, CGFappearance } from "../lib/CGF.js";
 import { MyPanorama } from "./elements/MyPanorama.js";
 import { MyTerrain } from "./elements/MyTerrain.js";
 import { MyRock } from "./elements/MyRock.js";
@@ -33,6 +33,7 @@ export class MyScene extends CGFscene {
 
     this.initTextures();
     this.initShaders();
+    this.initFloraMaterials();
 
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
@@ -154,6 +155,36 @@ export class MyScene extends CGFscene {
     this.barkTexture = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
   }
 
+  // Four shared appearances cover all flora — every plant of the same kind reuses
+  // the same CGFappearance, so we apply() 4 times per frame instead of 2 per plant.
+  initFloraMaterials() {
+    this.treeBranchApp = new CGFappearance(this);
+    this.treeBranchApp.setAmbient(0.2, 0.15, 0.1, 1.0);
+    this.treeBranchApp.setDiffuse(0.4, 0.3, 0.2, 1.0);
+    this.treeBranchApp.setSpecular(0.02, 0.02, 0.02, 1.0);
+    this.treeBranchApp.setShininess(2.0);
+    this.treeBranchApp.setTexture(this.barkTexture);
+    this.treeBranchApp.setTextureWrap('REPEAT', 'REPEAT');
+
+    this.flowerBranchApp = new CGFappearance(this);
+    this.flowerBranchApp.setAmbient(0.2, 0.15, 0.1, 1.0);
+    this.flowerBranchApp.setDiffuse(0.4, 0.3, 0.2, 1.0);
+    this.flowerBranchApp.setSpecular(0.02, 0.02, 0.02, 1.0);
+    this.flowerBranchApp.setShininess(2.0);
+
+    this.treePetalApp = new CGFappearance(this);
+    this.treePetalApp.setAmbient(0.1, 0.2, 0.05, 1.0);
+    this.treePetalApp.setDiffuse(0.2, 0.4, 0.1, 1.0);
+    this.treePetalApp.setSpecular(0.05, 0.05, 0.05, 1.0);
+    this.treePetalApp.setShininess(10.0);
+
+    this.flowerPetalApp = new CGFappearance(this);
+    this.flowerPetalApp.setAmbient(0.1, 0.3, 0.1, 1.0);
+    this.flowerPetalApp.setDiffuse(0.3, 0.7, 0.3, 1.0);
+    this.flowerPetalApp.setSpecular(0.1, 0.1, 0.1, 1.0);
+    this.flowerPetalApp.setShininess(10.0);
+  }
+
   initShaders() {
     this.panoramaShader = new CGFshader(this.gl, "./shaders/sky.vert", "./shaders/sky.frag");
     const lp = this.lights[0].position;
@@ -230,13 +261,21 @@ export class MyScene extends CGFscene {
       this.setActiveShader(this.defaultShader);
     }
 
-    // Batch flora: one shader/uniform set for all branches, then for all leaves.
+    // Batch flora: one shader for all branches, one for all leaves; one appearance
+    // per kind (tree vs flower). 4 apply() calls total instead of 2-per-plant.
     if (this.floras.length > 0) {
       this.setActiveShader(this.branchShader);
       this.branchShader.setUniformsValues({ uLength: 1.0 });
-      for (const f of this.floras) f.displayBranches();
+      this.flowerBranchApp.apply();
+      for (const f of this.floras) if (!f.isTree) f.displayBranches();
+      this.treeBranchApp.apply();
+      for (const f of this.floras) if (f.isTree) f.displayBranches();
+
       this.setActiveShader(this.defaultShader);
-      for (const f of this.floras) f.displayLeaves();
+      this.flowerPetalApp.apply();
+      for (const f of this.floras) if (!f.isTree) f.displayLeaves();
+      this.treePetalApp.apply();
+      for (const f of this.floras) if (f.isTree) f.displayLeaves();
     }
 
     if (this.grass) this.grass.display();

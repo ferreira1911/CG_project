@@ -1,4 +1,4 @@
-import { CGFobject, CGFappearance } from '../../lib/CGF.js';
+import { CGFobject } from '../../lib/CGF.js';
 
 const CYLINDER_SLICES = 8;
 
@@ -95,19 +95,6 @@ export class MyFlora extends CGFobject {
     this.seed = seed;
     this.isTree = isTree;
 
-    this.initMaterials();
-
-    if (petalTexture) {
-      this.petalAppearance.setTexture(petalTexture);
-      this.petalAppearance.setTextureWrap('REPEAT', 'REPEAT');
-    }
-    if (branchTexture) {
-      this.branchAppearance.setTexture(branchTexture);
-      this.branchAppearance.setTextureWrap('REPEAT', 'REPEAT');
-    }
-
-    this.branchShader = this.scene.branchShader;
-
     // Bake the entire L-system into two static meshes (branches, leaves).
     // After this, display() is two draw calls regardless of recursion depth.
     this._bv = []; this._bn = []; this._bt = []; this._bi = [];
@@ -127,29 +114,6 @@ export class MyFlora extends CGFobject {
     this._pv = this._pn = this._pt = this._pi = null;
     this._mat = null;
     this._matStack = null;
-  }
-
-  initMaterials() {
-    this.branchAppearance = new CGFappearance(this.scene);
-    this.branchAppearance.setAmbient(0.2, 0.15, 0.1, 1.0);
-    this.branchAppearance.setDiffuse(0.4, 0.3, 0.2, 1.0);
-    this.branchAppearance.setSpecular(0.02, 0.02, 0.02, 1.0);
-    this.branchAppearance.setShininess(2.0);
-
-    // Petals/Leaves
-    this.petalAppearance = new CGFappearance(this.scene);
-    if (this.isTree) {
-        // More "leafy" green for trees
-        this.petalAppearance.setAmbient(0.1, 0.2, 0.05, 1.0);
-        this.petalAppearance.setDiffuse(0.2, 0.4, 0.1, 1.0);
-        this.petalAppearance.setSpecular(0.05, 0.05, 0.05, 1.0);
-    } else {
-        // verde mais brilhante na vegetação rasteira
-        this.petalAppearance.setAmbient(0.1, 0.3, 0.1, 1.0);
-        this.petalAppearance.setDiffuse(0.3, 0.7, 0.3, 1.0);
-        this.petalAppearance.setSpecular(0.1, 0.1, 0.1, 1.0);
-    }
-    this.petalAppearance.setShininess(10.0);
   }
 
   // Deterministic pseudo-random in [0,1) keyed by (seed, call index).
@@ -342,34 +306,24 @@ export class MyFlora extends CGFobject {
     this._pop();
   }
 
-  // Caller is responsible for setting the branch shader + uLength uniform once
-  // for the whole batch of floras, so we don't pay shader/uniform churn per plant.
+  // Caller is responsible for setting the branch shader + uLength uniform AND
+  // applying the appropriate shared branch appearance once for the whole batch.
   displayBranches() {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
     this.scene.scale(this.scale, this.scale, this.scale);
-    this.branchAppearance.apply();
     this.branchMesh.display();
     this.scene.popMatrix();
   }
 
-  // Caller is responsible for setting the default shader once for the batch.
+  // Caller is responsible for setting the default shader AND applying the
+  // appropriate shared petal appearance once for the whole batch.
   displayLeaves() {
     if (!this.petalMesh) return;
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
     this.scene.scale(this.scale, this.scale, this.scale);
-    this.petalAppearance.apply();
     this.petalMesh.display();
     this.scene.popMatrix();
-  }
-
-  // Standalone path — slower, only used if MyScene hasn't been updated to batch.
-  display() {
-    this.scene.setActiveShader(this.branchShader);
-    this.branchShader.setUniformsValues({ uLength: 1.0 });
-    this.displayBranches();
-    this.scene.setActiveShader(this.scene.defaultShader);
-    this.displayLeaves();
   }
 }
