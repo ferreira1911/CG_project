@@ -22,7 +22,7 @@ void main() {
 
     // 2. Usar o canal vermelho (r) para saber a altura. 
     // Multiplicamos por um valor (ex: 8.0) para definir a altura máxima das colinas
-    float offset = heightMapColor.r * 8.0;
+    float offset = heightMapColor.r * 100.0;
 
     // 3. Criar a nova posição, somando o offset ao eixo Y do vértice original
     vec3 newPosition = aVertexPosition + vec3(0.0, offset, 0.0);
