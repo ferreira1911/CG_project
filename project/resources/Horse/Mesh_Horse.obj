@@ -1,6 +1,5 @@
 # This file uses feet as units for non-parametric coordinates.
 
-mtllib Mesh_Horse.mtl
 g default
 v -1.963596 81.347885 87.614204
 v 0.735699 81.347885 87.614204

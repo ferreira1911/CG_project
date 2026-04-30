@@ -1,4 +1,5 @@
 import { CGFobject, CGFappearance, CGFshader } from '../../lib/CGF.js';
+import { r } from '../utils.js';
 
 const GRASS_COUNT     = 8000;
 const GRASS_RANGE     = 150;   
@@ -36,8 +37,8 @@ export class MyGrass extends CGFobject {
     let placed = 0, tries = 0;
     while (placed < GRASS_COUNT && tries < PLACEMENT_TRIES) {
       tries++;
-      const x = scene.r(-GRASS_RANGE, GRASS_RANGE);
-      const z = scene.r(-GRASS_RANGE, GRASS_RANGE);
+      const x = r(-GRASS_RANGE, GRASS_RANGE);
+      const z = r(-GRASS_RANGE, GRASS_RANGE);
       if (!terrain.isPathClear(x, z, clearance)) continue;
       const y = terrain.heightAt(x, z);
       this._emitClump(x, y, z, Math.random() * Math.PI);

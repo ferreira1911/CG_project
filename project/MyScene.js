@@ -5,6 +5,7 @@ import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
 import { MyHorse } from "./elements/MyHorse.js";
+import { r, pickSpot } from "./utils.js";
 
 const ROCK_COUNT   = 30;
 const FLOWER_COUNT = 20;
@@ -50,19 +51,6 @@ export class MyScene extends CGFscene {
     this.setUpdatePeriod(50);
   }
 
-  // Rejection-sample a position inside [-range, +range] whose footprint stays off the path
-  pickSpot(range, clearance = 0, maxTries = 30) {
-    for (let i = 0; i < maxTries; i++) {
-      const x = this.r(-range, range);
-      const z = this.r(-range, range);
-      if (this.terrain.isPathClear(x, z, clearance)) return [x, this.terrain.heightAt(x, z), z];
-    }
-    // Fallback: accept any position
-    const x = this.r(-range, range);
-    const z = this.r(-range, range);
-    return [x, this.terrain.heightAt(x, z), z];
-  }
-
   scatter() {
     // Color and normal arrays must stay aligned: index N = matching color+normal pair.
     const rockTextures = [this.rockColorMap1, this.rockColorMap2, this.rockColorMap3];
@@ -70,29 +58,29 @@ export class MyScene extends CGFscene {
 
     // Rocks: smashed-disc shape — wide & flat with strong vertex perturbations.
     for (let i = 0; i < ROCK_COUNT; i++) {
-      const baseXZ = this.r(1.4, 3.2);
-      const elong  = this.r(1.0, 1.6);
+      const baseXZ = r(1.4, 3.2);
+      const elong  = r(1.0, 1.6);
       let sx = baseXZ;
       let sz = baseXZ * elong;
       if (Math.random() < 0.5) { const t = sx; sx = sz; sz = t; }
-      const sy = baseXZ * this.r(0.65, 0.80);
+      const sy = baseXZ * r(0.65, 0.80);
 
       const clearance = Math.max(sx, sz) * 0.5 + 0.5;
-      const [x, y, z] = this.pickSpot(100, clearance);
-      const matIdx = Math.floor(this.r(0, rockTextures.length));
+      const [x, y, z] = pickSpot(this.terrain,100, clearance);
+      const matIdx = Math.floor(r(0, rockTextures.length));
       const tex    = rockTextures[matIdx];
       const normal = rockNormals[matIdx];
       this.rocks.push(new MyRock(
         this,
         x, y, z,
         sx, sy, sz,
-        this.r(0, Math.PI * 2),  // rotY — break Z-aligned elongation
-        this.r(0, 100),          // seed
-        this.r(0.55, 0.85),      // deform
-        this.r(0.7, 1.6),        // bigFreq — bulky vs lumpy low-freq scale
-        this.r(2.0, 5.0),        // detailFreq — fine cracks vs broad chunks
-        this.r(0.5, 1.3),        // detailWeight — how carved vs how puffy
-        this.r(-0.5, 0.6),       // topBias — <0 slab/flat-top, >0 peaked/pointy
+        r(0, Math.PI * 2),  // rotY — break Z-aligned elongation
+        r(0, 100),          // seed
+        r(0.55, 0.85),      // deform
+        r(0.7, 1.6),        // bigFreq — bulky vs lumpy low-freq scale
+        r(2.0, 5.0),        // detailFreq — fine cracks vs broad chunks
+        r(0.5, 1.3),        // detailWeight — how carved vs how puffy
+        r(-0.5, 0.6),       // topBias — <0 slab/flat-top, >0 peaked/pointy
         tex,
         normal
       ));
@@ -100,31 +88,31 @@ export class MyScene extends CGFscene {
 
     // 5 flowers — depth 3, short, with petals
     for (let i = 0; i < FLOWER_COUNT; i++) {
-      const scale = this.r(1.5, 2.5);
+      const scale = r(1.5, 2.5);
       // Flower footprint is roughly its petal radius (petalSize * tip-branch length * scale)
       const clearance = scale * 1.0;
-      const [x, y, z] = this.pickSpot(80, clearance);
+      const [x, y, z] = pickSpot(this.terrain,80, clearance);
       this.floras.push(new MyFlora(
         this,
         x, y, z,
         scale,
         3, 30, 0.5, 0.5,                  // depth, angle°, trunkLength, lengthDecay
         0.05, 0.6, 15,                    // initialThickness, thicknessDecay, angleJitter°
-        this.r(5, 7) | 0,                 // petalCount
+        r(5, 7) | 0,                 // petalCount
         1.5, 45, 0.3,                     // petalSize, petalTilt°, petalJitter
         null,                             // petalTexture
         null,                             // branchTexture
-        this.r(0, 100),                   // seed
+        r(0, 100),                   // seed
         false                             // isTree
       ));
     }
 
     // 3 trees — depth 5, tall trunks, denser branching
     for (let i = 0; i < TREE_COUNT; i++) {
-      const scale = this.r(1.2, 1.8);
+      const scale = r(1.2, 1.8);
       // Trees splay wider — give them a generous buffer
       const clearance = scale * 3.0;
-      const [x, y, z] = this.pickSpot(90, clearance);
+      const [x, y, z] = pickSpot(this.terrain,90, clearance);
       this.floras.push(new MyFlora(
         this,
         x, y, z,
@@ -134,7 +122,7 @@ export class MyScene extends CGFscene {
         8, 0.9, 35, 0.35,                 // petalCount, petalSize, petalTilt°, petalJitter
         null,                             // petalTexture
         this.barkTexture,                 // branchTexture
-        this.r(0, 100),                   // seed
+        r(0, 100),                   // seed
         true                              // isTree
       ));
     }
@@ -142,8 +130,8 @@ export class MyScene extends CGFscene {
     this.grass = new MyGrass(this, this.grassTexture, this.terrain);
 
     // One horse on a clear spot. Tune scale + yaw to taste.
-    const [hx, hy, hz] = this.pickSpot(60, 5);
-    this.horse = new MyHorse(this, hx, hy, hz, 0.1, this.r(0, Math.PI * 2), this.horseTexture);
+    const [hx, hy, hz] = pickSpot(this.terrain,60, 5);
+    this.horse = new MyHorse(this, hx, hy, hz, 0.05, r(0, Math.PI * 2), this.horseTexture);
   }
 
   initLights() {
@@ -230,10 +218,6 @@ export class MyScene extends CGFscene {
     });
 
     this.branchShader = new CGFshader(this.gl, "./shaders/branch.vert", "./shaders/branch.frag");
-  }
-
-  r(min, max) {
-    return min + Math.random() * (max - min);
   }
 
   setDefaultAppearance() {
