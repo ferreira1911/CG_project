@@ -5,9 +5,10 @@ import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
 
-const ROCK_COUNT   = 20;
+const ROCK_COUNT   = 30;
 const FLOWER_COUNT = 20;
-const TREE_COUNT   = 8;
+const TREE_COUNT   = 0;
+
 
 /**
  * MyScene
@@ -62,22 +63,37 @@ export class MyScene extends CGFscene {
   }
 
   scatter() {
-    const rockTextures = [this.rockColorMap1, this.rockColorMap2];
+    // Color and normal arrays must stay aligned: index N = matching color+normal pair.
+    const rockTextures = [this.rockColorMap1, this.rockColorMap2, this.rockColorMap3];
+    const rockNormals  = [this.rockNormalMap1, this.rockNormalMap2, this.rockNormalMap3];
 
-    // 7 rocks scattered across the visible area
+    // Rocks: smashed-disc shape — wide & flat with strong vertex perturbations.
     for (let i = 0; i < ROCK_COUNT; i++) {
-      const scale = this.r(2.0, 6);
-      // MySphere base radius is 0.5; add a small buffer so rocks don't touch the path
-      const clearance = scale * 0.5 + 0.5;
+      const baseXZ = this.r(1.4, 3.2);
+      const elong  = this.r(1.0, 1.6);
+      let sx = baseXZ;
+      let sz = baseXZ * elong;
+      if (Math.random() < 0.5) { const t = sx; sx = sz; sz = t; }
+      const sy = baseXZ * this.r(0.65, 0.80);
+
+      const clearance = Math.max(sx, sz) * 0.5 + 0.5;
       const [x, y, z] = this.pickSpot(100, clearance);
-      const tex = rockTextures[Math.floor(this.r(0, rockTextures.length))];
+      const matIdx = Math.floor(this.r(0, rockTextures.length));
+      const tex    = rockTextures[matIdx];
+      const normal = rockNormals[matIdx];
       this.rocks.push(new MyRock(
         this,
         x, y, z,
-        scale,
-        this.r(0, 100),     // seed
-        this.r(0.30, 0.50), // deform
-        tex
+        sx, sy, sz,
+        this.r(0, Math.PI * 2),  // rotY — break Z-aligned elongation
+        this.r(0, 100),          // seed
+        this.r(0.55, 0.85),      // deform
+        this.r(0.7, 1.6),        // bigFreq — bulky vs lumpy low-freq scale
+        this.r(2.0, 5.0),        // detailFreq — fine cracks vs broad chunks
+        this.r(0.5, 1.3),        // detailWeight — how carved vs how puffy
+        this.r(-0.5, 0.6),       // topBias — <0 slab/flat-top, >0 peaked/pointy
+        tex,
+        normal
       ));
     }
 
@@ -149,7 +165,10 @@ export class MyScene extends CGFscene {
     this.cloudMap = new CGFtexture(this, './resources/textures/cloudMap.png');
     this.rockColorMap1 = new CGFtexture(this, './resources/textures/rockTexture1.jpg');
     this.rockColorMap2 = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
-    this.rockNormalMap = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
+    this.rockColorMap3 = new CGFtexture(this, './resources/textures/rockTexture3.jpg');
+    this.rockNormalMap1 = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
+    this.rockNormalMap2 = new CGFtexture(this, './resources/textures/rockNormals2.jpg');
+    this.rockNormalMap3 = new CGFtexture(this, './resources/textures/rockNormals3.jpg');
     this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
     this.grassTexture = new CGFtexture(this, './resources/textures/grass.png');
     this.barkTexture = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
@@ -252,10 +271,9 @@ export class MyScene extends CGFscene {
       this._scattered = true;
     }
 
-    // Rocks — share normal+noise across instances; each rock binds its own colour
+    // Rocks — share noise across instances; each rock binds its own colour + normal
     if (this.rocks.length > 0) {
       this.setActiveShader(this.rockShader);
-      this.rockNormalMap.bind(1);
       this.rockNoiseMap.bind(2);
       for (const r of this.rocks) r.display();
       this.setActiveShader(this.defaultShader);

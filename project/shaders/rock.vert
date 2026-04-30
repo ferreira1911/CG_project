@@ -12,6 +12,10 @@ uniform mat4 uPMatrix;
 uniform sampler2D uNoiseMap;   // Unit 2 — greyscale noise texture
 uniform float uDeformScale;
 uniform float uSeed;
+uniform float uBigFreq;        // Per-rock low-freq scale (bulky vs lumpy)
+uniform float uDetailFreq;     // Per-rock high-freq scale (broad vs fine cracks)
+uniform float uDetailWeight;   // How much high-freq carves into the silhouette
+uniform float uTopBias;        // -1 → flat-top slab, +1 → peaked/pointy
 
 varying vec2 vTextureCoord;
 varying vec3 vNormal;
@@ -42,9 +46,14 @@ void main() {
 
     // Low-freq noise pushes outward (bulky rock), high-freq signed noise carves
     // inward dents and outward bumps — rocks get cracks/erosion, not just inflation
-    float big    = sampleNoise(p, aVertexNormal);
-    float detail = sampleNoise(p * 3.0, aVertexNormal) - 0.5;
-    float bump   = big + 0.5 * detail;
+    float big    = sampleNoise(p * uBigFreq, aVertexNormal);
+    float detail = sampleNoise(p * uDetailFreq, aVertexNormal) - 0.5;
+    float bump   = big + uDetailWeight * detail;
+
+    // Vertical bias: weight displacement toward top (peaked) or bottom (slab).
+    // topness = -1 at south pole, +1 at north pole.
+    float topness = aVertexPosition.y * 2.0;
+    bump *= 1.0 + uTopBias * topness;
 
     vec3 displacedPosition = aVertexPosition + aVertexNormal * bump * uDeformScale;
 
