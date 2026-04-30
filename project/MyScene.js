@@ -4,6 +4,7 @@ import { MyTerrain } from "./elements/MyTerrain.js";
 import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
+import { MyHorse } from "./elements/MyHorse.js";
 
 const ROCK_COUNT   = 30;
 const FLOWER_COUNT = 20;
@@ -139,6 +140,10 @@ export class MyScene extends CGFscene {
     }
 
     this.grass = new MyGrass(this, this.grassTexture, this.terrain);
+
+    // One horse on a clear spot. Tune scale + yaw to taste.
+    const [hx, hy, hz] = this.pickSpot(60, 5);
+    this.horse = new MyHorse(this, hx, hy, hz, 0.1, this.r(0, Math.PI * 2), this.horseTexture);
   }
 
   initLights() {
@@ -171,6 +176,7 @@ export class MyScene extends CGFscene {
     this.rockNormalMap3 = new CGFtexture(this, './resources/textures/rockNormals3.jpg');
     this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
     this.grassTexture = new CGFtexture(this, './resources/textures/grass.png');
+    this.horseTexture = new CGFtexture(this, './resources/Horse/Tex_Horse.png');
     this.barkTexture = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
   }
 
@@ -296,6 +302,7 @@ export class MyScene extends CGFscene {
       for (const f of this.floras) if (f.isTree) f.displayLeaves();
     }
 
+    if (this.horse) this.horse.display();
     if (this.grass) this.grass.display();
     // ---- END Primitive drawing section
   }
