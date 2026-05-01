@@ -5,6 +5,9 @@ import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
 import { MyWagon } from "./elements/MyWagon.js";
+import { MyUnitCube } from "./geometric/MyUnitCube.js";
+import { MyCylinder } from "./geometric/MyCylinder.js";
+import { MyCircle } from "./geometric/MyCircle.js";
 import { r, pickSpot } from "./utils.js";
 
 const ROCK_COUNT   = 30;
@@ -37,6 +40,7 @@ export class MyScene extends CGFscene {
     this.initTextures();
     this.initShaders();
     this.initFloraMaterials();
+    this.initPrimitives();
 
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
@@ -196,6 +200,14 @@ export class MyScene extends CGFscene {
     this.flowerPetalApp.setDiffuse(0.3, 0.7, 0.3, 1.0);
     this.flowerPetalApp.setSpecular(0.1, 0.1, 0.1, 1.0);
     this.flowerPetalApp.setShininess(10.0);
+  }
+
+  // Shared primitive instances reused across the scene (wagon parts, future
+  // hay bales, fences, etc.). Bind once, draw many times via transforms.
+  initPrimitives() {
+    this.cube     = new MyUnitCube(this);
+    this.cylinder = new MyCylinder(this, 24, 1);
+    this.circle   = new MyCircle(this, 24);
   }
 
   initShaders() {
