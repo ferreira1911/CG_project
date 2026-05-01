@@ -4,7 +4,7 @@ import { MyTerrain } from "./elements/MyTerrain.js";
 import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
-import { MyHorse } from "./elements/MyHorse.js";
+import { MyWagon } from "./elements/MyWagon.js";
 import { r, pickSpot } from "./utils.js";
 
 const ROCK_COUNT   = 30;
@@ -129,9 +129,9 @@ export class MyScene extends CGFscene {
 
     this.grass = new MyGrass(this, this.grassTexture, this.terrain);
 
-    // One horse on a clear spot. Tune scale + yaw to taste.
-    const [hx, hy, hz] = pickSpot(this.terrain,60, 5);
-    this.horse = new MyHorse(this, hx, hy, hz, 0.05, r(0, Math.PI * 2), this.horseTexture);
+    // One wagon on a clear spot — owns its horses internally.
+    const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
+    this.wagon = new MyWagon(this, wx, wy, wz, r(0, Math.PI * 2), 1.0, this.horseTexture);
   }
 
   initLights() {
@@ -286,7 +286,7 @@ export class MyScene extends CGFscene {
       for (const f of this.floras) if (f.isTree) f.displayLeaves();
     }
 
-    if (this.horse) this.horse.display();
+    if (this.wagon) this.wagon.display();
     if (this.grass) this.grass.display();
     // ---- END Primitive drawing section
   }
