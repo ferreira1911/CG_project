@@ -5,14 +5,19 @@ import { MyWagonTongue } from './MyWagonTongue.js';
 import { MyWagonWheel }  from './MyWagonWheel.js';
 import { MyHorse }       from './MyHorse.js';
 
-const BED_LENGTH    = 4.0;
-const BED_WIDTH     = 2.0;
-const BED_HEIGHT    = 0.6;
-const WHEEL_RADIUS  = 0.7;
-const TONGUE_LENGTH = 3.0;
+const BED_LENGTH         = 8.0;
+const BED_WIDTH          = 4.0;
+const BED_HEIGHT         = 0.9;
+// Duplicates MyWagonBed.RAIL_HEIGHT_FACTOR — keep in sync. Used here so the
+// cover can rest on top of the rails instead of cutting through them.
+const RAIL_HEIGHT        = BED_HEIGHT * 1.2;
+const FRONT_WHEEL_RADIUS = 0.85;
+const BACK_WHEEL_RADIUS  = 1.20;
+const WHEEL_THICKNESS    = 0.22;
+const TONGUE_LENGTH      = 4.5;
 
 // Hierarchical covered light wagon: bed, cloth cover (back half), front tongue,
-// 4 wheels, and the horses harnessed at the end of the tongue.
+// 4 wheels (back pair larger), and the horses harnessed at the tongue tip.
 export class MyWagon extends CGFobject {
   constructor(scene, x, y, z, yaw, scale, horseTexture) {
     super(scene);
@@ -20,10 +25,11 @@ export class MyWagon extends CGFobject {
     this.yaw = yaw;
     this.scale = scale;
 
-    this.bed    = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT);
-    this.cover  = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH, BED_HEIGHT * 1.4);
-    this.tongue = new MyWagonTongue(scene, TONGUE_LENGTH);
-    this.wheel  = new MyWagonWheel(scene, WHEEL_RADIUS);
+    this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT);
+    this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5);
+    this.tongue     = new MyWagonTongue(scene, TONGUE_LENGTH);
+    this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS);
+    this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS);
 
     // Horses live in world coordinates: place them at the tip of the tongue,
     // rotated to match the wagon's yaw so they "pull" it forward (+x local).
@@ -31,9 +37,11 @@ export class MyWagon extends CGFobject {
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
     const hx = x + cy * fwdDist;
     const hz = z - sy * fwdDist;
-    const horseScale = 0.05 * scale;
+    const horseScale = 0.02 * scale;
+    // Horse model's local forward is +z, so add π/2 so it aligns with the
+    // wagon's +x forward direction.
     this.horses = [
-      new MyHorse(scene, hx, y, hz, horseScale, yaw, horseTexture),
+      new MyHorse(scene, hx, y, hz, horseScale, yaw + Math.PI / 2, horseTexture),
     ];
   }
 
@@ -43,32 +51,38 @@ export class MyWagon extends CGFobject {
     this.scene.rotate(this.yaw, 0, 1, 0);
     this.scene.scale(this.scale, this.scale, this.scale);
 
-    // Bed centred above the wheels.
+    // Bed centred above the back axle (back wheels set the bed height).
     this.scene.pushMatrix();
-    this.scene.translate(0, WHEEL_RADIUS + BED_HEIGHT * 0.5, 0);
+    this.scene.translate(0, BACK_WHEEL_RADIUS + BED_HEIGHT * 0.5, 0);
     this.bed.display();
     this.scene.popMatrix();
 
-    // Cover spans the back half of the bed, sitting on top of it.
+    // Cover sits on top of the side rails so the canvas wraps over them.
     this.scene.pushMatrix();
-    this.scene.translate(-BED_LENGTH * 0.25, WHEEL_RADIUS + BED_HEIGHT, 0);
+    this.scene.translate(-BED_LENGTH * 0.25, BACK_WHEEL_RADIUS + BED_HEIGHT + RAIL_HEIGHT, 0);
     this.cover.display();
     this.scene.popMatrix();
 
-    // Tongue extends forward from the front of the bed, just below it.
+    // Tongue extends forward from the front of the bed at front-axle height.
     this.scene.pushMatrix();
-    this.scene.translate(BED_LENGTH * 0.5, WHEEL_RADIUS * 0.6, 0);
+    this.scene.translate(BED_LENGTH * 0.5, FRONT_WHEEL_RADIUS, 0);
     this.tongue.display();
     this.scene.popMatrix();
 
-    // 4 wheels: front-left, front-right, back-left, back-right.
+    // 4 wheels: front pair smaller, back pair larger. Each pair sits at its
+    // own radius so both touch the ground.
     const wx = BED_LENGTH * 0.35;
-    const wz = BED_WIDTH  * 0.5 + 0.05;
-    const wheelOffsets = [[ wx,  wz], [ wx, -wz], [-wx,  wz], [-wx, -wz]];
-    for (const [px, pz] of wheelOffsets) {
+    const wz = BED_WIDTH  * 0.5 + WHEEL_THICKNESS * 0.5 + 0.02;
+    const wheelPlacements = [
+      [ wx,  wz, this.frontWheel, FRONT_WHEEL_RADIUS],
+      [ wx, -wz, this.frontWheel, FRONT_WHEEL_RADIUS],
+      [-wx,  wz, this.backWheel,  BACK_WHEEL_RADIUS],
+      [-wx, -wz, this.backWheel,  BACK_WHEEL_RADIUS],
+    ];
+    for (const [px, pz, wheel, radius] of wheelPlacements) {
       this.scene.pushMatrix();
-      this.scene.translate(px, WHEEL_RADIUS, pz);
-      this.wheel.display();
+      this.scene.translate(px, radius, pz);
+      wheel.display();
       this.scene.popMatrix();
     }
 
