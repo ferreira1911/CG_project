@@ -230,6 +230,13 @@ export class MyScene extends CGFscene {
     });
 
     this.branchShader = new CGFshader(this.gl, "./shaders/branch.vert", "./shaders/branch.frag");
+
+    this.clothShader = new CGFshader(this.gl, "./shaders/cloth.vert", "./shaders/cloth.frag");
+    this.clothShader.setUniformsValues({
+      uSampler: 0,
+      time: 0,
+      uLightPos: [lp[0], lp[1], lp[2]]
+    });
   }
 
   setDefaultAppearance() {
@@ -243,6 +250,7 @@ export class MyScene extends CGFscene {
     if (this.startTime === undefined) this.startTime = t;
     this.time = (t - this.startTime) / 1000;
     this.panoramaShader.setUniformsValues({ time: this.time });
+    this.clothShader.setUniformsValues({ time: this.time });
     if (this.grass) this.grass.setTime(this.time);
   }
 
