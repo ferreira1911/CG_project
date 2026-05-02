@@ -4,7 +4,10 @@ import { MyTerrain } from "./elements/MyTerrain.js";
 import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
-import { MyHorse } from "./elements/MyHorse.js";
+import { MyWagon } from "./elements/MyWagon.js";
+import { MyUnitCube } from "./geometric/MyUnitCube.js";
+import { MyCylinder } from "./geometric/MyCylinder.js";
+import { MyCircle } from "./geometric/MyCircle.js";
 import { r, pickSpot } from "./utils.js";
 
 const ROCK_COUNT   = 30;
@@ -37,16 +40,18 @@ export class MyScene extends CGFscene {
     this.initTextures();
     this.initShaders();
     this.initFloraMaterials();
+    this.initPrimitives();
 
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
     this.terrain = new MyTerrain(this);
 
-    this.rocks = [];
-    this.floras = [];
+    this.rocks    = [];
+    this.floras   = [];
     this._scattered = false;
 
     this.displayAxis = true;
+    this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
     this.setUpdatePeriod(50);
   }
@@ -129,9 +134,10 @@ export class MyScene extends CGFscene {
 
     this.grass = new MyGrass(this, this.grassTexture, this.terrain);
 
-    // One horse on a clear spot. Tune scale + yaw to taste.
-    const [hx, hy, hz] = pickSpot(this.terrain,60, 5);
-    this.horse = new MyHorse(this, hx, hy, hz, 0.05, r(0, Math.PI * 2), this.horseTexture);
+    // One wagon on a clear spot — owns its horses internally.
+    const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
+    this.wagon = new MyWagon(this, wx, wy, wz, r(0, Math.PI * 2), 1.0, this.horseTexture);
+
   }
 
   initLights() {
@@ -198,6 +204,14 @@ export class MyScene extends CGFscene {
     this.flowerPetalApp.setShininess(10.0);
   }
 
+  // Shared primitive instances reused across the scene (wagon parts, fences, etc.).
+  // Bind once, draw many times via transforms.
+  initPrimitives() {
+    this.cube     = new MyUnitCube(this);
+    this.cylinder = new MyCylinder(this, 24, 1);
+    this.circle   = new MyCircle(this, 24);
+  }
+
   initShaders() {
     this.panoramaShader = new CGFshader(this.gl, "./shaders/sky.vert", "./shaders/sky.frag");
     const lp = this.lights[0].position;
@@ -218,6 +232,13 @@ export class MyScene extends CGFscene {
     });
 
     this.branchShader = new CGFshader(this.gl, "./shaders/branch.vert", "./shaders/branch.frag");
+
+    this.clothShader = new CGFshader(this.gl, "./shaders/cloth.vert", "./shaders/cloth.frag");
+    this.clothShader.setUniformsValues({
+      uSampler: 0,
+      time: 0,
+      uLightPos: [lp[0], lp[1], lp[2]]
+    });
   }
 
   setDefaultAppearance() {
@@ -229,9 +250,28 @@ export class MyScene extends CGFscene {
 
   update(t) {
     if (this.startTime === undefined) this.startTime = t;
+    const prevTime = this.time ?? 0;
     this.time = (t - this.startTime) / 1000;
+    const dt = this.time - prevTime;   // seconds since last frame
+
     this.panoramaShader.setUniformsValues({ time: this.time });
+    this.clothShader.setUniformsValues({ time: this.time });
     if (this.grass) this.grass.setTime(this.time);
+    if (this.wagon) this.wagon.update(dt, this.interface);
+
+    // ── Follow camera ─────────────────────────────────────────────────────────
+    // When Free Camera is OFF, lock the camera behind the wagon every frame.
+    // When ON, CGF's built-in orbit controls take over (mouse drag works normally).
+    if (!this.freeCamera && this.wagon) {
+      const w          = this.wagon;
+      const CAM_DIST   = 18;  // units behind the wagon
+      const CAM_HEIGHT =  9;  // units above the wagon's Y
+      const CAM_LOOK   =  3;  // height above wagon centre to aim at
+      const bx = w.x - Math.cos(w.yaw) * CAM_DIST;
+      const bz = w.z + Math.sin(w.yaw) * CAM_DIST;
+      vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);
+      vec3.set(this.camera.target,   w.x, w.y + CAM_LOOK,  w.z);
+    }
   }
 
   display() {
@@ -286,7 +326,7 @@ export class MyScene extends CGFscene {
       for (const f of this.floras) if (f.isTree) f.displayLeaves();
     }
 
-    if (this.horse) this.horse.display();
+    if (this.wagon) this.wagon.display();
     if (this.grass) this.grass.display();
     // ---- END Primitive drawing section
   }

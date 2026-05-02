@@ -1,4 +1,4 @@
-import {CGFobject} from '../lib/CGF.js';
+import {CGFobject} from '../../lib/CGF.js';
 /**
  * MyUnitCube
  * @constructor
@@ -70,6 +70,12 @@ export class MyUnitCube extends CGFobject {
             // Bottom face (aponta para baixo, eixo Y negativo)
             0, -1, 0,  0, -1, 0,  0, -1, 0,  0, -1, 0
         ];
+
+        // Per-face UVs: each face is BL, BR, TR, TL → (0,0), (1,0), (1,1), (0,1).
+        // Same pattern repeated for all 6 faces so any face textures cleanly.
+        const faceUVs = [0, 0,  1, 0,  1, 1,  0, 1];
+        this.texCoords = [];
+        for (let f = 0; f < 6; f++) this.texCoords.push(...faceUVs);
 
         // Índices divididos para usar todos os 24 vértices, face a face
         this.indices = [
