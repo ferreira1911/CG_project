@@ -10,6 +10,10 @@ export class MyWagonWheel extends CGFobject {
     this.radius = radius;
     this.thickness = thickness;
 
+    // Cumulative rolling angle (radians). Grows without bound — that's fine;
+    // sin/cos in the GL pipeline handle large angles correctly.
+    this.spinAngle = 0;
+
     // Near-white ambient/diffuse so the wheel texture shows through unmodified.
     // Material × texture is multiplicative — tinted material = tinted, dim texture.
     this.appearance = new CGFappearance(scene);
@@ -28,6 +32,13 @@ export class MyWagonWheel extends CGFobject {
 
     const R = this.radius, T = this.thickness;
     const { cylinder, circle } = this.scene;
+
+    // Outer spin rotate wraps ALL geometry so the whole wheel — rim and both
+    // caps — rotates together around the wheel axle (+Z in local space).
+    // The rim is rotationally symmetric so its spin is invisible, but the cap
+    // texture (spoke pattern) will visibly turn as the wagon rolls.
+    this.scene.pushMatrix();
+    this.scene.rotate(this.spinAngle, 0, 0, 1);
 
     // Rim: rotate the y-axis cylinder so its axis aligns with +z, then centre
     // it across the wheel thickness.
@@ -52,5 +63,7 @@ export class MyWagonWheel extends CGFobject {
     this.scene.scale(R, R, 1);
     circle.display();
     this.scene.popMatrix();
+
+    this.scene.popMatrix(); // end spin
   }
 }

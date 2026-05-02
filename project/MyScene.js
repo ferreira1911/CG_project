@@ -46,11 +46,12 @@ export class MyScene extends CGFscene {
     this.panorama = new MyPanorama(this, this.panoramaTexture);
     this.terrain = new MyTerrain(this);
 
-    this.rocks = [];
-    this.floras = [];
+    this.rocks    = [];
+    this.floras   = [];
     this._scattered = false;
 
     this.displayAxis = true;
+    this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
     this.setUpdatePeriod(50);
   }
@@ -136,6 +137,7 @@ export class MyScene extends CGFscene {
     // One wagon on a clear spot — owns its horses internally.
     const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
     this.wagon = new MyWagon(this, wx, wy, wz, r(0, Math.PI * 2), 1.0, this.horseTexture);
+
   }
 
   initLights() {
@@ -202,8 +204,8 @@ export class MyScene extends CGFscene {
     this.flowerPetalApp.setShininess(10.0);
   }
 
-  // Shared primitive instances reused across the scene (wagon parts, future
-  // hay bales, fences, etc.). Bind once, draw many times via transforms.
+  // Shared primitive instances reused across the scene (wagon parts, fences, etc.).
+  // Bind once, draw many times via transforms.
   initPrimitives() {
     this.cube     = new MyUnitCube(this);
     this.cylinder = new MyCylinder(this, 24, 1);
@@ -248,10 +250,28 @@ export class MyScene extends CGFscene {
 
   update(t) {
     if (this.startTime === undefined) this.startTime = t;
+    const prevTime = this.time ?? 0;
     this.time = (t - this.startTime) / 1000;
+    const dt = this.time - prevTime;   // seconds since last frame
+
     this.panoramaShader.setUniformsValues({ time: this.time });
     this.clothShader.setUniformsValues({ time: this.time });
     if (this.grass) this.grass.setTime(this.time);
+    if (this.wagon) this.wagon.update(dt, this.interface);
+
+    // ── Follow camera ─────────────────────────────────────────────────────────
+    // When Free Camera is OFF, lock the camera behind the wagon every frame.
+    // When ON, CGF's built-in orbit controls take over (mouse drag works normally).
+    if (!this.freeCamera && this.wagon) {
+      const w          = this.wagon;
+      const CAM_DIST   = 18;  // units behind the wagon
+      const CAM_HEIGHT =  9;  // units above the wagon's Y
+      const CAM_LOOK   =  3;  // height above wagon centre to aim at
+      const bx = w.x - Math.cos(w.yaw) * CAM_DIST;
+      const bz = w.z + Math.sin(w.yaw) * CAM_DIST;
+      vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);
+      vec3.set(this.camera.target,   w.x, w.y + CAM_LOOK,  w.z);
+    }
   }
 
   display() {
