@@ -11,8 +11,8 @@ import { MyCircle } from "./geometric/MyCircle.js";
 import { r, pickSpot } from "./utils.js";
 
 const ROCK_COUNT   = 30;
-const FLOWER_COUNT = 20;
-const TREE_COUNT   = 0;
+const FLOWER_COUNT = 25;
+const TREE_COUNT   = 3;
 
 
 /**
@@ -57,6 +57,9 @@ export class MyScene extends CGFscene {
   }
 
   scatter() {
+    const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
+    this.wagon = new MyWagon(this, wx, wy, wz, r(0, Math.PI * 2), 1.0, this.horseTexture);
+
     // Color and normal arrays must stay aligned: index N = matching color+normal pair.
     const rockTextures = [this.rockColorMap1, this.rockColorMap2, this.rockColorMap3];
     const rockNormals  = [this.rockNormalMap1, this.rockNormalMap2, this.rockNormalMap3];
@@ -92,52 +95,57 @@ export class MyScene extends CGFscene {
     }
 
     // 5 flowers — depth 3, short, with petals
+    const FLOWER_COLORS = [
+      [0.2, 0.4, 0.9], // Blue
+      [0.9, 0.2, 0.2], // Red
+      [0.9, 0.8, 0.2], // Yellow
+      [0.9, 0.9, 0.9], // White
+      [0.6, 0.2, 0.8]  // Purple
+    ];
+
     for (let i = 0; i < FLOWER_COUNT; i++) {
-      const scale = r(1.5, 2.5);
-      // Flower footprint is roughly its petal radius (petalSize * tip-branch length * scale)
+      const scale = r(1.8, 2.8);
       const clearance = scale * 1.0;
       const [x, y, z] = pickSpot(this.terrain,80, clearance);
+
+      
+      const color = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
+      
       this.floras.push(new MyFlora(
         this,
         x, y, z,
         scale,
-        3, 30, 0.5, 0.5,                  // depth, angle°, trunkLength, lengthDecay
-        0.05, 0.6, 15,                    // initialThickness, thicknessDecay, angleJitter°
-        r(5, 7) | 0,                 // petalCount
-        1.5, 45, 0.3,                     // petalSize, petalTilt°, petalJitter
-        null,                             // petalTexture
-        null,                             // branchTexture
-        r(0, 100),                   // seed
-        false                             // isTree
+        3, 30, 0.7, 0.5,
+        0.05, 0.6, 15,
+        r(6, 10) | 0,
+        1.2, 35, 0.3,
+        null, null,
+        r(0, 100),
+        false,
+        color
       ));
     }
 
     // 3 trees — depth 5, tall trunks, denser branching
     for (let i = 0; i < TREE_COUNT; i++) {
       const scale = r(1.2, 1.8);
-      // Trees splay wider — give them a generous buffer
       const clearance = scale * 3.0;
       const [x, y, z] = pickSpot(this.terrain,90, clearance);
       this.floras.push(new MyFlora(
         this,
         x, y, z,
         scale,
-        5, 28, 5, 0.62,                 // depth, angle°, trunkLength, lengthDecay
-        0.18, 0.72, 18,                   // initialThickness, thicknessDecay, angleJitter°
-        8, 0.9, 35, 0.35,                 // petalCount, petalSize, petalTilt°, petalJitter
-        null,                             // petalTexture
-        this.barkTexture,                 // branchTexture
-        r(0, 100),                   // seed
-        true                              // isTree
+        5, 28, 5, 0.62,
+        0.18, 0.72, 18,
+        8, 0.9, 35, 0.35,
+        null,
+        this.barkTexture,
+        r(0, 100),
+        true
       ));
     }
 
     this.grass = new MyGrass(this, this.grassTexture, this.terrain);
-
-    // One wagon on a clear spot — owns its horses internally.
-    const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
-    this.wagon = new MyWagon(this, wx, wy, wz, r(0, Math.PI * 2), 1.0, this.horseTexture);
-
   }
 
   initLights() {
@@ -174,38 +182,10 @@ export class MyScene extends CGFscene {
     this.barkTexture = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
   }
 
-  // Four shared appearances cover all flora — every plant of the same kind reuses
-  // the same CGFappearance, so we apply() 4 times per frame instead of 2 per plant.
   initFloraMaterials() {
-    this.treeBranchApp = new CGFappearance(this);
-    this.treeBranchApp.setAmbient(0.2, 0.15, 0.1, 1.0);
-    this.treeBranchApp.setDiffuse(0.4, 0.3, 0.2, 1.0);
-    this.treeBranchApp.setSpecular(0.02, 0.02, 0.02, 1.0);
-    this.treeBranchApp.setShininess(2.0);
-    this.treeBranchApp.setTexture(this.barkTexture);
-    this.treeBranchApp.setTextureWrap('REPEAT', 'REPEAT');
-
-    this.flowerBranchApp = new CGFappearance(this);
-    this.flowerBranchApp.setAmbient(0.2, 0.15, 0.1, 1.0);
-    this.flowerBranchApp.setDiffuse(0.4, 0.3, 0.2, 1.0);
-    this.flowerBranchApp.setSpecular(0.02, 0.02, 0.02, 1.0);
-    this.flowerBranchApp.setShininess(2.0);
-
-    this.treePetalApp = new CGFappearance(this);
-    this.treePetalApp.setAmbient(0.1, 0.2, 0.05, 1.0);
-    this.treePetalApp.setDiffuse(0.2, 0.4, 0.1, 1.0);
-    this.treePetalApp.setSpecular(0.05, 0.05, 0.05, 1.0);
-    this.treePetalApp.setShininess(10.0);
-
-    this.flowerPetalApp = new CGFappearance(this);
-    this.flowerPetalApp.setAmbient(0.1, 0.3, 0.1, 1.0);
-    this.flowerPetalApp.setDiffuse(0.3, 0.7, 0.3, 1.0);
-    this.flowerPetalApp.setSpecular(0.1, 0.1, 0.1, 1.0);
-    this.flowerPetalApp.setShininess(10.0);
+      // appearances are now handled per-instance or shared in MyFlora
   }
 
-  // Shared primitive instances reused across the scene (wagon parts, fences, etc.).
-  // Bind once, draw many times via transforms.
   initPrimitives() {
     this.cube     = new MyUnitCube(this);
     this.cylinder = new MyCylinder(this, 24, 1);
@@ -252,21 +232,18 @@ export class MyScene extends CGFscene {
     if (this.startTime === undefined) this.startTime = t;
     const prevTime = this.time ?? 0;
     this.time = (t - this.startTime) / 1000;
-    const dt = this.time - prevTime;   // seconds since last frame
+    const dt = this.time - prevTime;
 
     this.panoramaShader.setUniformsValues({ time: this.time });
     this.clothShader.setUniformsValues({ time: this.time });
     if (this.grass) this.grass.setTime(this.time);
     if (this.wagon) this.wagon.update(dt, this.interface);
 
-    // ── Follow camera ─────────────────────────────────────────────────────────
-    // When Free Camera is OFF, lock the camera behind the wagon every frame.
-    // When ON, CGF's built-in orbit controls take over (mouse drag works normally).
     if (!this.freeCamera && this.wagon) {
       const w          = this.wagon;
-      const CAM_DIST   = 18;  // units behind the wagon
-      const CAM_HEIGHT =  9;  // units above the wagon's Y
-      const CAM_LOOK   =  3;  // height above wagon centre to aim at
+      const CAM_DIST   = 18;
+      const CAM_HEIGHT =  9;
+      const CAM_LOOK   =  3;
       const bx = w.x - Math.cos(w.yaw) * CAM_DIST;
       const bz = w.z + Math.sin(w.yaw) * CAM_DIST;
       vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);
@@ -286,8 +263,6 @@ export class MyScene extends CGFscene {
 
     this.setDefaultAppearance();
 
-    // ---- BEGIN Primitive drawing section
-
     // Sky
     this.setActiveShader(this.panoramaShader);
     this.panoramaTexture.bind(0);
@@ -301,7 +276,7 @@ export class MyScene extends CGFscene {
       this._scattered = true;
     }
 
-    // Rocks — share noise across instances; each rock binds its own colour + normal
+    // Rocks
     if (this.rocks.length > 0) {
       this.setActiveShader(this.rockShader);
       this.rockNoiseMap.bind(2);
@@ -309,25 +284,17 @@ export class MyScene extends CGFscene {
       this.setActiveShader(this.defaultShader);
     }
 
-    // Batch flora: one shader for all branches, one for all leaves; one appearance
-    // per kind (tree vs flower). 4 apply() calls total instead of 2-per-plant.
+    // Flora Batch Rendering
     if (this.floras.length > 0) {
       this.setActiveShader(this.branchShader);
       this.branchShader.setUniformsValues({ uLength: 1.0 });
-      this.flowerBranchApp.apply();
-      for (const f of this.floras) if (!f.isTree) f.displayBranches();
-      this.treeBranchApp.apply();
-      for (const f of this.floras) if (f.isTree) f.displayBranches();
+      for (const f of this.floras) f.displayBranches();
 
       this.setActiveShader(this.defaultShader);
-      this.flowerPetalApp.apply();
-      for (const f of this.floras) if (!f.isTree) f.displayLeaves();
-      this.treePetalApp.apply();
-      for (const f of this.floras) if (f.isTree) f.displayLeaves();
+      for (const f of this.floras) f.displayLeaves();
     }
 
     if (this.wagon) this.wagon.display();
     if (this.grass) this.grass.display();
-    // ---- END Primitive drawing section
   }
 }
