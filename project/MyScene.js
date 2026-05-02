@@ -212,6 +212,10 @@ export class MyScene extends CGFscene {
     });
 
     this.branchShader = new CGFshader(this.gl, "./shaders/branch.vert", "./shaders/branch.frag");
+    this.branchShader.setUniformsValues({
+
+      uLightPos: [lp[0], lp[1], lp[2]]
+    });
 
     this.clothShader = new CGFshader(this.gl, "./shaders/cloth.vert", "./shaders/cloth.frag");
     this.clothShader.setUniformsValues({
@@ -287,11 +291,21 @@ export class MyScene extends CGFscene {
     // Flora Batch Rendering
     if (this.floras.length > 0) {
       this.setActiveShader(this.branchShader);
+      
       this.branchShader.setUniformsValues({ uLength: 1.0 });
       for (const f of this.floras) f.displayBranches();
 
-      this.setActiveShader(this.defaultShader);
+      this.gl.disable(this.gl.CULL_FACE);
+
+      this.branchShader.setUniformsValues({ uLength: 0.5 });
+
+
       for (const f of this.floras) f.displayLeaves();
+      
+      this.gl.enable(this.gl.CULL_FACE);
+
+
+      this.setActiveShader(this.defaultShader);
     }
 
     if (this.wagon) this.wagon.display();

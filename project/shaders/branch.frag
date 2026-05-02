@@ -6,13 +6,23 @@ varying vec2 vTextureCoord;
 varying vec3 vNormal;
 
 uniform sampler2D uSampler;
+uniform bool uUseTexture;
+uniform vec3 uBaseColor;
+uniform vec3 uLightPos;
 
 void main() {
-    vec4 color = texture2D(uSampler, vTextureCoord);
+    vec4 color = vec4(uBaseColor, 1.0);
+    if (uUseTexture) {
+        color *= texture2D(uSampler, vTextureCoord);
+    }
     
-    // Simple lighting
-    vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
-    float diffuse = max(dot(vNormal, lightDir), 0.4);
+    vec3 lightDir = normalize(uLightPos);
+    float d = dot(normalize(vNormal), lightDir);
     
-    gl_FragColor = vec4(color.rgb * diffuse, 1.0);
+    // Two-sided lighting:
+    // Side facing light (d > 0) is brighter (up to 1.0)
+    // Side facing away (d < 0) is dimmer (minimum 0.4)
+    float lighting = 0.4 + 0.6 * max(d, 0.0) + 0.2 * max(-d, 0.0);
+    
+    gl_FragColor = vec4(color.rgb * lighting, color.a);
 }

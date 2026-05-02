@@ -18,6 +18,6 @@ varying vec3 vNormal;
 
 void main() {
     vTextureCoord = vec2(aTextureCoord.s, aTextureCoord.t * uLength * 2.0);
-    vNormal = aVertexNormal;
+    vNormal = normalize(vec3(uNMatrix * vec4(aVertexNormal, 0.0)));
     gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
 }

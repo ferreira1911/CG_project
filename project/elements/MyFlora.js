@@ -30,55 +30,74 @@ const LEAF = (() => {
   return { verts, norms, uvs, inds };
 })();
 
-// Single quad for a flower petal, slightly tapered
 const PETAL = (() => {
+  const verts = [0,0,0], norms = [0,0,1], uvs = [0.5,1], inds = [];
 
-  
-  const verts = [
-    -0.2, 0, 0,   0.2, 0, 0,   -0.5, 1, 0,   0.5, 1, 0,  // Front
-    -0.2, 0, 0,   0.2, 0, 0,   -0.5, 1, 0,   0.5, 1, 0   // Back
-  ];
+  const sides = 8;
+  for (let i = 0; i <= sides; i++) {
 
 
-  const norms = [
-    0,0,1, 0,0,1, 0,0,1, 0,0,1,
-    0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1
-  ];
+    const a = Math.PI + (i / sides) * Math.PI;
+    const x = Math.cos(a) * 0.5;
 
-  const uvs = [0,1, 1,1, 0,0, 1,0, 0,1, 1,1, 0,0, 1,0];
+    const y = Math.sin(a) * -1.0;
+    verts.push(x, y, 0);
+
+    norms.push(0, 0, 1);
+
+    uvs.push(0.5 + x, 1.0 - y);
+    if (i > 0) inds.push(0, i, i + 1);
 
 
-  const inds = [
-    0, 1, 2,  1, 3, 2,
-    6, 5, 4,  6, 7, 5
-  ];
+  }
+  const off = verts.length / 3;
+  for (let i = 0; i < off; i++) {
+
+    verts.push(verts[i*3], verts[i*3+1], -verts[i*3+2]);
+    norms.push(0, 0, -1);
+
+    uvs.push(uvs[i*2], uvs[i*2+1]);
+
+  }
+  const baseInds = [...inds];
+
+  for (let k = 0; k < baseInds.length; k += 3) {
+
+    inds.push(baseInds[k] + off, baseInds[k+2] + off, baseInds[k+1] + off);
+
+
+  }
+
+
   return { verts, norms, uvs, inds };
-
 })();
 
 // Simple hexagonal disk for flower center
 const DISK = (() => {
   const verts = [0,0,0], norms = [0,1,0], uvs = [0.5, 0.5], inds = [];
-
   const sides = 8;
-
   for(let i=0; i<=sides; i++) {
     const a = (i/sides) * Math.PI * 2;
-
     verts.push(Math.cos(a)*0.5, 0, Math.sin(a)*0.5);
     norms.push(0, 1, 0);
-
-
     uvs.push(0.5 + Math.cos(a)*0.5, 0.5 + Math.sin(a)*0.5);
     if(i > 0) {
-
-
         const next = (i === sides) ? 1 : i + 1;
-
         inds.push(0, i, next);
     }
+  }
+  const off = verts.length / 3;
+  for (let i = 0; i < off; i++) {
+    verts.push(verts[i*3], -verts[i*3+1], verts[i*3+2]);
 
+    norms.push(0, -1, 0);
 
+    uvs.push(uvs[i*2], uvs[i*2+1]);
+  }
+  const baseInds = [...inds];
+  for (let k = 0; k < baseInds.length; k += 3) {
+
+    inds.push(baseInds[k] + off, baseInds[k+2] + off, baseInds[k+1] + off);
   }
   return { verts, norms, uvs, inds };
 })();
@@ -145,15 +164,19 @@ export class MyFlora extends CGFobject {
         this.petalApp.setAmbient(0.1, 0.3, 0.1, 1.0);
         this.petalApp.setDiffuse(0.3, 0.7, 0.3, 1.0);
     } else {
-        this.petalApp.setAmbient(petalColor[0]*0.4, petalColor[1]*0.4, petalColor[2]*0.4, 1.0);
-        this.petalApp.setDiffuse(petalColor[0], petalColor[1], petalColor[2], 1.0);
+        this.petalApp.setAmbient(petalColor[0] * 0.6, petalColor[1] * 0.6, petalColor[2] * 0.6, 1.0);
+        this.petalApp.setDiffuse(petalColor[0] * 0.9, petalColor[1] * 0.9, petalColor[2] * 0.9, 1.0);
         if (petalTexture) this.petalApp.setTexture(petalTexture);
     }
+    this.petalApp.setSpecular(0.2, 0.2, 0.2, 1.0);
+
+    this.petalApp.setShininess(10.0);
 
     if (!isTree) {
         this.centerApp = new CGFappearance(scene);
-        this.centerApp.setAmbient(0.4, 0.4, 0.1, 1.0);
-        this.centerApp.setDiffuse(0.8, 0.8, 0.2, 1.0);
+        this.centerApp.setAmbient(0.5, 0.5, 0.1, 1.0);
+        this.centerApp.setDiffuse(0.9, 0.9, 0.2, 1.0);
+        this.centerApp.setSpecular(0.2, 0.2, 0.2, 1.0);
     }
 
     // Baking
@@ -217,6 +240,7 @@ export class MyFlora extends CGFobject {
   }
 
   _emitCylinder(currentLength) {
+    const nm = this._normalMatrix();
     const base = this._bv.length / 3;
     const tmp = [0, 0, 0];
     for (let s = 0; s <= 1; s++) {
@@ -225,7 +249,8 @@ export class MyFlora extends CGFobject {
         const lx = Math.cos(a), lz = Math.sin(a);
         this._txPos(lx, s, lz, tmp);
         this._bv.push(...tmp);
-        this._bn.push(lx, 0, lz);
+        this._txNorm(nm, lx, 0, lz, tmp);
+        this._bn.push(...tmp);
         this._bt.push(i / CYLINDER_SLICES, (1 - s) * currentLength);
       }
     }
@@ -240,7 +265,7 @@ export class MyFlora extends CGFobject {
     const nm = this._normalMatrix();
     const base = this._pv.length / 3;
     const tmp = [0, 0, 0];
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < LEAF.verts.length / 3; i++) {
       this._txPos(LEAF.verts[i*3], LEAF.verts[i*3+1], LEAF.verts[i*3+2], tmp);
       this._pv.push(...tmp);
       this._txNorm(nm, LEAF.norms[i*3], LEAF.norms[i*3+1], LEAF.norms[i*3+2], tmp);
@@ -254,7 +279,7 @@ export class MyFlora extends CGFobject {
     const nm = this._normalMatrix();
     const base = this._pv.length / 3;
     const tmp = [0, 0, 0];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < PETAL.verts.length / 3; i++) {
       this._txPos(PETAL.verts[i*3], PETAL.verts[i*3+1], PETAL.verts[i*3+2], tmp);
       this._pv.push(...tmp);
       this._txNorm(nm, PETAL.norms[i*3], PETAL.norms[i*3+1], PETAL.norms[i*3+2], tmp);
@@ -371,27 +396,50 @@ export class MyFlora extends CGFobject {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
     this.scene.scale(this.scale, this.scale, this.scale);
+    
+    const shader = this.scene.branchShader;
     this.branchApp.apply();
+    
+    shader.setUniformsValues({
+
+        uUseTexture: !!this.branchApp.texture,
+        uBaseColor: this.branchApp.diffuse.slice(0, 3)
+
+
+    });
+
     this.branchMesh.display();
     this.scene.popMatrix();
   }
 
   displayLeaves() {
-    const gl = this.scene.gl;
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
     this.scene.scale(this.scale, this.scale, this.scale);
     
-    gl.disable(gl.CULL_FACE);
+    const shader = this.scene.branchShader;
+
     if (this.petalMesh) {
         this.petalApp.apply();
+        shader.setUniformsValues({
+            uUseTexture: !!this.petalApp.texture,
+
+
+            uBaseColor: this.petalApp.diffuse.slice(0, 3)
+
+        });
         this.petalMesh.display();
     }
     if (this.centerMesh) {
         this.centerApp.apply();
+        shader.setUniformsValues({
+            uUseTexture: !!this.centerApp.texture,
+            uBaseColor: this.centerApp.diffuse.slice(0, 3)
+
+            
+        });
         this.centerMesh.display();
     }
-    gl.enable(gl.CULL_FACE);
     
     this.scene.popMatrix();
   }
