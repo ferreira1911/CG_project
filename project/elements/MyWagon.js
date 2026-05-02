@@ -1,4 +1,4 @@
-import { CGFobject } from '../../lib/CGF.js';
+import { CGFobject, CGFtexture, CGFappearance } from '../../lib/CGF.js';
 import { MyWagonBed }    from './MyWagonBed.js';
 import { MyWagonCover }  from './MyWagonCover.js';
 import { MyWagonTongue } from './MyWagonTongue.js';
@@ -14,7 +14,7 @@ const RAIL_HEIGHT        = BED_HEIGHT * 1.2;
 const FRONT_WHEEL_RADIUS = 0.85;
 const BACK_WHEEL_RADIUS  = 1.20;
 const WHEEL_THICKNESS    = 0.22;
-const TONGUE_LENGTH      = 4.5;
+const TONGUE_LENGTH      = 3.5;
 
 // Hierarchical covered light wagon: bed, cloth cover (back half), front tongue,
 // 4 wheels (back pair larger), and the horses harnessed at the tongue tip.
@@ -25,11 +25,15 @@ export class MyWagon extends CGFobject {
     this.yaw = yaw;
     this.scale = scale;
 
-    this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT);
-    this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5);
-    this.tongue     = new MyWagonTongue(scene, TONGUE_LENGTH);
-    this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS);
-    this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS);
+    this.wheelTexture = new CGFtexture(scene, './resources/textures/wheel.jpg');
+    this.clothTexture = new CGFtexture(scene, './resources/textures/cloth.jpg');
+    this.woodenTexture = new CGFtexture(scene, './resources/textures/wood.png');
+
+    this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT, this.woodenTexture);
+    this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5, this.clothTexture);
+    this.tongue     = new MyWagonTongue(scene, TONGUE_LENGTH, this.woodenTexture);
+    this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS, this.wheelTexture);
+    this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS, this.wheelTexture);
 
     // Horses live in world coordinates: place them at the tip of the tongue,
     // rotated to match the wagon's yaw so they "pull" it forward (+x local).
@@ -63,9 +67,10 @@ export class MyWagon extends CGFobject {
     this.cover.display();
     this.scene.popMatrix();
 
-    // Tongue extends forward from the front of the bed at front-axle height.
+    // Tongue tucked under the bed front so it visually attaches to the wagon
+    // instead of floating low at front-axle height.
     this.scene.pushMatrix();
-    this.scene.translate(BED_LENGTH * 0.5, FRONT_WHEEL_RADIUS, 0);
+    this.scene.translate(BED_LENGTH * 0.5, BACK_WHEEL_RADIUS, 0);
     this.tongue.display();
     this.scene.popMatrix();
 

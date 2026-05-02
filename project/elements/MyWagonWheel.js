@@ -10,10 +10,12 @@ export class MyWagonWheel extends CGFobject {
     this.radius = radius;
     this.thickness = thickness;
 
+    // Near-white ambient/diffuse so the wheel texture shows through unmodified.
+    // Material × texture is multiplicative — tinted material = tinted, dim texture.
     this.appearance = new CGFappearance(scene);
-    this.appearance.setAmbient(0.20, 0.15, 0.10, 1.0);
-    this.appearance.setDiffuse(0.35, 0.25, 0.18, 1.0);
-    this.appearance.setSpecular(0.08, 0.08, 0.08, 1.0);
+    this.appearance.setAmbient(0.40, 0.40, 0.40, 1.0);
+    this.appearance.setDiffuse(0.90, 0.90, 0.90, 1.0);
+    this.appearance.setSpecular(0.05, 0.05, 0.05, 1.0);
     this.appearance.setShininess(5.0);
     if (texture) {
       this.appearance.setTexture(texture);

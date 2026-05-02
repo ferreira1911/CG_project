@@ -12,10 +12,11 @@ export class MyWagonBed extends CGFobject {
     this.width  = width;
     this.height = height;
 
+    // Near-white so the wood texture comes through with its own colour.
     this.appearance = new CGFappearance(scene);
-    this.appearance.setAmbient(0.30, 0.25, 0.20, 1.0);
-    this.appearance.setDiffuse(0.55, 0.40, 0.28, 1.0);
-    this.appearance.setSpecular(0.10, 0.10, 0.10, 1.0);
+    this.appearance.setAmbient(0.40, 0.40, 0.40, 1.0);
+    this.appearance.setDiffuse(0.90, 0.90, 0.90, 1.0);
+    this.appearance.setSpecular(0.05, 0.05, 0.05, 1.0);
     this.appearance.setShininess(5.0);
     if (texture) {
       this.appearance.setTexture(texture);
