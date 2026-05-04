@@ -10,9 +10,8 @@ import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
 import { r, pickSpot } from "./utils.js";
 
-const ROCK_COUNT   = 30;
-const FLOWER_COUNT = 25;
-const TREE_COUNT   = 3;
+const ROCK_COUNT   = 25;
+const FLOWER_COUNT = 40;
 
 
 /**
@@ -104,7 +103,7 @@ export class MyScene extends CGFscene {
     ];
 
     for (let i = 0; i < FLOWER_COUNT; i++) {
-      const scale = r(1.8, 2.8);
+      const scale = r(0.35, 0.75);
       const clearance = scale * 1.0;
       const [x, y, z] = pickSpot(this.terrain,80, clearance);
 
@@ -126,24 +125,6 @@ export class MyScene extends CGFscene {
       ));
     }
 
-    // 3 trees — depth 5, tall trunks, denser branching
-    for (let i = 0; i < TREE_COUNT; i++) {
-      const scale = r(1.2, 1.8);
-      const clearance = scale * 3.0;
-      const [x, y, z] = pickSpot(this.terrain,90, clearance);
-      this.floras.push(new MyFlora(
-        this,
-        x, y, z,
-        scale,
-        5, 28, 5, 0.62,
-        0.18, 0.72, 18,
-        8, 0.9, 35, 0.35,
-        null,
-        this.barkTexture,
-        r(0, 100),
-        true
-      ));
-    }
 
     this.grass = new MyGrass(this, this.grassTexture, this.terrain);
   }
@@ -256,6 +237,18 @@ export class MyScene extends CGFscene {
   }
 
   display() {
+    // Follow-cam runs in display() at full render framerate (not the update tick).
+    if (!this.freeCamera && this.wagon) {
+      const w          = this.wagon;
+      const CAM_DIST   = 18;
+      const CAM_HEIGHT =  9;
+      const CAM_LOOK   =  3;
+      const bx = w.x - Math.cos(w.yaw) * CAM_DIST;
+      const bz = w.z + Math.sin(w.yaw) * CAM_DIST;
+      vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);
+      vec3.set(this.camera.target,   w.x, w.y + CAM_LOOK,  w.z);
+    }
+
     this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 

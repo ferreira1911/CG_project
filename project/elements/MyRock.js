@@ -5,7 +5,7 @@ export class MyRock extends CGFobject {
     constructor(scene, x, y, z, sx, sy, sz, rotY, seed, deform,
                 bigFreq, detailFreq, detailWeight, topBias, colorTex, normalTex) {
         super(scene);
-        this.sphere = new MySphere(scene, 0.5, 32, 16, false, 1, 0);
+        this.sphere = new MySphere(scene, 0.5, 16, 8, false, 1, 0);
         this.x = x;
         this.y = y;
         this.z = z;

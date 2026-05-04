@@ -196,6 +196,11 @@ export class MyFlora extends CGFobject {
     this._bv = this._bn = this._bi = this._bt = null;
     this._pv = this._pn = this._pi = this._pt = null;
     this._cv = this._cn = this._ci = this._ct = null;
+
+    // Cache diffuse color slices so display() never allocates on the hot path.
+    this._branchColor = this.branchApp.diffuse.slice(0, 3);
+    this._petalColor  = this.petalApp.diffuse.slice(0, 3);
+    this._centerColor = this.centerApp ? this.centerApp.diffuse.slice(0, 3) : [0.9, 0.9, 0.2];
   }
 
   rand() {
@@ -396,16 +401,12 @@ export class MyFlora extends CGFobject {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
     this.scene.scale(this.scale, this.scale, this.scale);
-    
+
     const shader = this.scene.branchShader;
     this.branchApp.apply();
-    
     shader.setUniformsValues({
-
         uUseTexture: !!this.branchApp.texture,
-        uBaseColor: this.branchApp.diffuse.slice(0, 3)
-
-
+        uBaseColor: this._branchColor
     });
 
     this.branchMesh.display();
@@ -416,17 +417,14 @@ export class MyFlora extends CGFobject {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
     this.scene.scale(this.scale, this.scale, this.scale);
-    
+
     const shader = this.scene.branchShader;
 
     if (this.petalMesh) {
         this.petalApp.apply();
         shader.setUniformsValues({
             uUseTexture: !!this.petalApp.texture,
-
-
-            uBaseColor: this.petalApp.diffuse.slice(0, 3)
-
+            uBaseColor: this._petalColor
         });
         this.petalMesh.display();
     }
@@ -434,13 +432,11 @@ export class MyFlora extends CGFobject {
         this.centerApp.apply();
         shader.setUniformsValues({
             uUseTexture: !!this.centerApp.texture,
-            uBaseColor: this.centerApp.diffuse.slice(0, 3)
-
-            
+            uBaseColor: this._centerColor
         });
         this.centerMesh.display();
     }
-    
+
     this.scene.popMatrix();
   }
 }
