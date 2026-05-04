@@ -11,7 +11,7 @@ export class MyTerrain extends CGFobject {
         // World extent of the terrain (matches the scale() in display())
         this.terrainSize = 400;
         // Must match `heightMapColor.r * 100.0` in terrain.vert
-        this.maxHeight = 100.0;
+        this.maxHeight = 20.0;
 
         // Async CPU-side sampling of heightmap + mask
         this.ready = false;
