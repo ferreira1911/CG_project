@@ -12,15 +12,17 @@ export class MyPanorama extends CGFobject {
 
     }
 
-    display() {
-        this.scene.pushMatrix();
+        display() {
+            this.scene.pushMatrix();
 
-        const cam = this.scene.camera.position;
-        //this.scene.translate(cam[0], cam[1], cam[2]);
+            const cam = this.scene.camera.position;
+            //this.scene.translate(cam[0], cam[1], cam[2]);
 
-        this.appearance.apply();
-        this.sphere.display();
+            this.scene.gl.disable(this.scene.gl.DEPTH_TEST);
+            this.appearance.apply();
+            this.sphere.display();
+            this.scene.gl.enable(this.scene.gl.DEPTH_TEST);
 
-        this.scene.popMatrix();
-    }
+            this.scene.popMatrix();
+        }
 }

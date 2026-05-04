@@ -130,9 +130,12 @@ export class MyScene extends CGFscene {
   }
 
   initLights() {
-    this.lights[0].setPosition(-170, 200, -100, 0);
-    this.lights[0].setDiffuse(1.0, 1.0, 1.0, 1.0);
-    this.lights[0].setSpecular(1.0, 1.0, 1.0, 1.0);
+    // Posição: X, Y, Z, 0 (0 = luz direcional, como o Sol)
+    this.lights[0].setPosition(-112.0, 135.0, -100.0, 0.0);
+    // Cor do Sol (amarelo muito claro)
+    this.lights[0].setDiffuse(1.0, 0.98, 0.9, 1.0);
+    this.lights[0].setSpecular(1.0, 0.98, 0.9, 1.0);
+    this.lights[0].setAmbient(0.4, 0.4, 0.45, 1.0);
 
     this.lights[0].enable();
     this.lights[0].update();

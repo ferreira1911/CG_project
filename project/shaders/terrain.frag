@@ -4,19 +4,16 @@ precision highp float;
 
 varying vec2 vTextureCoord;
 
-uniform sampler2D uSampler;  // Terreno Base (Canal 0)
-uniform sampler2D uSampler3; // Caminho (Canal 2)
-uniform sampler2D uSampler4; // Máscara B&W (Canal 3)
+uniform sampler2D uSampler;
+uniform sampler2D uSampler3;
+uniform sampler2D uSampler4;
 
 void main() {
-    // Lemos as cores repetindo as texturas 5x para terem detalhe
+    // Tile terrain/path textures for detail; keep mask in base UV space.
     vec4 colorTerrain = texture2D(uSampler, vTextureCoord * 5.0);
     vec4 colorPath = texture2D(uSampler3, fract(vTextureCoord * 5.0));
-    
-    // A máscara não se repete, cobre o terreno todo (1x)
     vec4 mask = texture2D(uSampler4, vTextureCoord);
 
-    // mix() mistura o terreno e o caminho com base na cor da máscara (mask.r)
-    // 0.0 (Preto) = Mostra Terreno | 1.0 (Branco) = Mostra Caminho
+    // mask.r: 0.0 -> terrain, 1.0 -> path.
     gl_FragColor = mix(colorTerrain, colorPath, mask.r);
 }
