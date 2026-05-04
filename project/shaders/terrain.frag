@@ -10,8 +10,8 @@ uniform sampler2D uSampler4;
 
 void main() {
     // Tile terrain/path textures for detail; keep mask in base UV space.
-    vec4 colorTerrain = texture2D(uSampler, vTextureCoord * 50.0);
-    vec4 colorPath = texture2D(uSampler3, vTextureCoord * 50.0);
+    vec4 colorTerrain = texture2D(uSampler, vTextureCoord * 30.0);
+    vec4 colorPath = texture2D(uSampler3, vTextureCoord * 30.0);
     vec4 mask = texture2D(uSampler4, vTextureCoord);
 
     // mask.r: 0.0 -> terrain, 1.0 -> path.

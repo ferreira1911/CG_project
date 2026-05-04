@@ -74,17 +74,25 @@ export class MyTerrain extends CGFobject {
 
     // White in mask = path (matches mix() in terrain.frag)
     isPath(worldX, worldZ) {
-        return this._sampleR(this._maskData, this._maskW, this._maskH, worldX, worldZ) > 128;
+        return this._sampleR(this._maskData, this._maskW, this._maskH, worldX, worldZ) > 100;
     }
 
-    // True if (x,z) — or any of 8 points around it within `radius` — is on the path
+    // Probabilistic grass placement so the transition around the path fades out
+    // instead of cutting off sharply.
     isPathClear(worldX, worldZ, radius) {
-        if (this.isPath(worldX, worldZ)) return false;
-        if (radius <= 0) return true;
-        for (let i = 0; i < 8; i++) {
-            const a = (i / 8) * Math.PI * 2;
-            if (this.isPath(worldX + Math.cos(a) * radius, worldZ + Math.sin(a) * radius)) return false;
+        void radius;
+
+        const maskVal = this._sampleR(this._maskData, this._maskW, this._maskH, worldX, worldZ);
+
+        // Strong path signal: always reject.
+        if (maskVal > 150) return false;
+
+        // Transition zone: thin out grass progressively.
+        if (maskVal > 30) {
+            const rejectionChance = (maskVal - 30) / 120;
+            if (Math.random() < rejectionChance) return false;
         }
+
         return true;
     }
 

@@ -10,8 +10,8 @@ import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
 import { r, pickSpot } from "./utils.js";
 
-const ROCK_COUNT   = 25;
-const FLOWER_COUNT = 40;
+const ROCK_COUNT   = 40;
+const FLOWER_COUNT = 80;
 
 
 /**
@@ -73,7 +73,12 @@ export class MyScene extends CGFscene {
       const sy = baseXZ * r(0.65, 0.80);
 
       const clearance = Math.max(sx, sz) * 0.5 + 0.5;
-      const [x, y, z] = pickSpot(this.terrain,100, clearance);
+      let x, y, z;
+      do {
+        x = r(-100, 100);
+        z = r(-100, 100);
+      } while (!this.terrain.isPathClear(x, z, clearance));
+      y = this.terrain.heightAt(x, z);
       const matIdx = Math.floor(r(0, rockTextures.length));
       const tex    = rockTextures[matIdx];
       const normal = rockNormals[matIdx];
@@ -105,7 +110,12 @@ export class MyScene extends CGFscene {
     for (let i = 0; i < FLOWER_COUNT; i++) {
       const scale = r(0.35, 0.75);
       const clearance = scale * 1.0;
-      const [x, y, z] = pickSpot(this.terrain,80, clearance);
+      let x, y, z;
+      do {
+        x = r(-80, 80);
+        z = r(-80, 80);
+      } while (!this.terrain.isPathClear(x, z, clearance));
+      y = this.terrain.heightAt(x, z);
 
       
       const color = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
@@ -128,6 +138,8 @@ export class MyScene extends CGFscene {
 
     this.grass1 = new MyGrass(this, this.grassTexture, this.terrain);
     this.grass2 = new MyGrass(this, this.grassTexture, this.terrain);
+    this.grass3 = new MyGrass(this, this.grassTexture, this.terrain);
+    this.grass4 = new MyGrass(this, this.grassTexture, this.terrain);
   }
 
   initLights() {
@@ -227,6 +239,8 @@ export class MyScene extends CGFscene {
     this.clothShader.setUniformsValues({ time: this.time });
     if (this.grass1) this.grass1.setTime(this.time);
     if (this.grass2) this.grass2.setTime(this.time);
+    if (this.grass3) this.grass3.setTime(this.time);
+    if (this.grass4) this.grass4.setTime(this.time);
     if (this.wagon) this.wagon.update(dt, this.interface);
 
     if (!this.freeCamera && this.wagon) {
@@ -309,5 +323,7 @@ export class MyScene extends CGFscene {
     if (this.wagon) this.wagon.display();
     if (this.grass1) this.grass1.display();
     if (this.grass2) this.grass2.display();
+    if (this.grass3) this.grass3.display();
+    if (this.grass4) this.grass4.display();
   }
 }
