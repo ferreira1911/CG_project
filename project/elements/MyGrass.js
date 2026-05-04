@@ -1,8 +1,8 @@
 import { CGFobject, CGFappearance, CGFshader } from '../../lib/CGF.js';
 import { r } from '../utils.js';
 
-const GRASS_COUNT     = 8000;
-const GRASS_RANGE     = 150;   
+const GRASS_COUNT     = 7000;
+const GRASS_RANGE     = 200;   
 const BLADE_WIDTH     = 3.0;   // patch is wide enough that the tiled texture reads as a strip
 const BLADE_HEIGHT    = 1.8;
 const TILES_U         = 3;     // how many times grass.png repeats horizontally per patch

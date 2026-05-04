@@ -126,7 +126,8 @@ export class MyScene extends CGFscene {
     }
 
 
-    this.grass = new MyGrass(this, this.grassTexture, this.terrain);
+    this.grass1 = new MyGrass(this, this.grassTexture, this.terrain);
+    this.grass2 = new MyGrass(this, this.grassTexture, this.terrain);
   }
 
   initLights() {
@@ -224,7 +225,8 @@ export class MyScene extends CGFscene {
 
     this.panoramaShader.setUniformsValues({ time: this.time });
     this.clothShader.setUniformsValues({ time: this.time });
-    if (this.grass) this.grass.setTime(this.time);
+    if (this.grass1) this.grass1.setTime(this.time);
+    if (this.grass2) this.grass2.setTime(this.time);
     if (this.wagon) this.wagon.update(dt, this.interface);
 
     if (!this.freeCamera && this.wagon) {
@@ -305,6 +307,7 @@ export class MyScene extends CGFscene {
     }
 
     if (this.wagon) this.wagon.display();
-    if (this.grass) this.grass.display();
+    if (this.grass1) this.grass1.display();
+    if (this.grass2) this.grass2.display();
   }
 }

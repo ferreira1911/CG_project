@@ -5,8 +5,8 @@ export class MyTerrain extends CGFobject {
     constructor(scene) {
         super(scene);
 
-        // 50 divisões (50x50 quadrados).
-        this.plane = new MyPlane(scene, 50);
+        // 150 divisões (150x150 quadrados).
+        this.plane = new MyPlane(scene, 150);
 
         // World extent of the terrain (matches the scale() in display())
         this.terrainSize = 400;
@@ -92,6 +92,7 @@ export class MyTerrain extends CGFobject {
         // Carrega todas as texturas necessárias
         this.colorMap = new CGFtexture(this.scene, "resources/textures/terrain/terrain_color.jpg");
         this.heightMap = new CGFtexture(this.scene, "resources/textures/terrain/terrain_height.jpg");
+        this.dispMap = new CGFtexture(this.scene, "resources/textures/terrain/terrain_color_disp.jpg");
         this.pathMap = new CGFtexture(this.scene, "resources/textures/terrain/path_color.jpg");
         this.maskMap = new CGFtexture(this.scene, "resources/textures/terrain/mask.jpg");
 
@@ -103,7 +104,7 @@ export class MyTerrain extends CGFobject {
         
         // Define em que "canal" (unidade) cada textura vai estar
         // uSampler (0) é o colorMap, definido automaticamente pelo appearance
-        this.terrainShader.setUniformsValues({ uSampler2: 1, uSampler3: 2, uSampler4: 3 });
+        this.terrainShader.setUniformsValues({ uSampler2: 1, uSampler3: 2, uSampler4: 3, uSampler5: 4 });
     }
 
     display() {
@@ -115,6 +116,7 @@ export class MyTerrain extends CGFobject {
         this.heightMap.bind(1);
         this.pathMap.bind(2);
         this.maskMap.bind(3);
+        this.dispMap.bind(4);
 
         this.appearance.apply();
 
