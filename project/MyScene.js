@@ -258,15 +258,35 @@ export class MyScene extends CGFscene {
     if (!this.freeCamera && this.wagon) {
       const w          = this.wagon;
       const introY     = this.introCameraOffset || 0;
+      
+      // 1. Elastic Camera Lag: Add up to 1.5 units of distance at max speed
+      const speedLag   = (w.speed / 8.0) * 1.5; // 8.0 is MAX_SPEED
+
       // When intro is running, start far back and high up, dropping smoothly into place
-      const CAM_DIST   = 18 + (introY * 0.4); 
+      const CAM_DIST   = 18 + speedLag + (introY * 0.4); 
       const CAM_HEIGHT =  9 + introY;
       const CAM_LOOK   =  3 + (introY * 0.1); 
       
-      const bx = w.x - Math.cos(w.yaw) * CAM_DIST;
-      const bz = w.z + Math.sin(w.yaw) * CAM_DIST;
+      // 2. Steering Lean (Centrifugal Force): Offset camera horizontally when turning
+      // steeringAngle is positive when turning left, so camera swings right
+      const lean = w.steeringAngle * 3;
+      // Right vector is (+sin(yaw), 0, +cos(yaw))
+      const rx = Math.sin(w.yaw);
+      const rz = Math.cos(w.yaw);
+
+      const bx = w.x - Math.cos(w.yaw) * CAM_DIST + (rx * lean);
+      const bz = w.z + Math.sin(w.yaw) * CAM_DIST + (rz * lean);
+      
       vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);
       vec3.set(this.camera.target,   w.x, w.y + CAM_LOOK,  w.z);
+      
+      // 3. Dynamic FOV (Speed Zoom)
+      // Base FOV is 1.0 rad. We zoom out slightly as speed increases.
+      if (this.camera) {
+          const baseFov = 1.0;
+          const maxFovIncrease = 0.08; 
+          this.camera.fov = baseFov + (w.speed / 8.0) * maxFovIncrease;
+      }
     }
 
     this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
