@@ -5,6 +5,7 @@ import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
 import { MyWagon } from "./elements/MyWagon.js";
+import { MyCameraAnimator } from "./animators/MyCameraAnimator.js";
 import { MyUnitCube } from "./geometric/MyUnitCube.js";
 import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
@@ -52,7 +53,10 @@ export class MyScene extends CGFscene {
     this.displayAxis = true;
     this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
-    this.setUpdatePeriod(50);
+    // Start 120 units high, drop over 6 seconds
+    this.introAnimator = new MyCameraAnimator(this, 120, 6.0);
+
+    this.setUpdatePeriod(16);  // ~60 Hz physics/input tick
   }
 
   scatter() {
@@ -242,26 +246,23 @@ export class MyScene extends CGFscene {
     if (this.grass3) this.grass3.setTime(this.time);
     if (this.grass4) this.grass4.setTime(this.time);
     if (this.wagon) this.wagon.update(dt, this.interface);
-
-    if (!this.freeCamera && this.wagon) {
-      const w          = this.wagon;
-      const CAM_DIST   = 18;
-      const CAM_HEIGHT =  9;
-      const CAM_LOOK   =  3;
-      const bx = w.x - Math.cos(w.yaw) * CAM_DIST;
-      const bz = w.z + Math.sin(w.yaw) * CAM_DIST;
-      vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);
-      vec3.set(this.camera.target,   w.x, w.y + CAM_LOOK,  w.z);
-    }
   }
 
   display() {
+    // Update intro animation if active
+    if (this.introAnimator && this.introAnimator.active) {
+        this.introAnimator.update(this.time || 0);
+    }
+
     // Follow-cam runs in display() at full render framerate (not the update tick).
     if (!this.freeCamera && this.wagon) {
       const w          = this.wagon;
-      const CAM_DIST   = 18;
-      const CAM_HEIGHT =  9;
-      const CAM_LOOK   =  3;
+      const introY     = this.introCameraOffset || 0;
+      // When intro is running, start far back and high up, dropping smoothly into place
+      const CAM_DIST   = 18 + (introY * 0.4); 
+      const CAM_HEIGHT =  9 + introY;
+      const CAM_LOOK   =  3 + (introY * 0.1); 
+      
       const bx = w.x - Math.cos(w.yaw) * CAM_DIST;
       const bz = w.z + Math.sin(w.yaw) * CAM_DIST;
       vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);

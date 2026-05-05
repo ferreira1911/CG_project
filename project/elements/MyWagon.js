@@ -4,6 +4,7 @@ import { MyWagonCover }  from './MyWagonCover.js';
 import { MyWagonTongue } from './MyWagonTongue.js';
 import { MyWagonWheel }  from './MyWagonWheel.js';
 import { MyHorse }       from './MyHorse.js';
+import { MyHorseAnimator } from '../animators/MyHorseAnimator.js';
 
 // ── Wagon geometry constants ─────────────────────────────────────────────────
 const BED_LENGTH         = 8.0;
@@ -57,6 +58,10 @@ export class MyWagon extends CGFobject {
       new MyHorse(scene, 0, 0, 0, horseScale, 0, horseTexture),
     ];
     this._updateHorsePositions();
+
+    // ── Animators ────────────────────────────────────────────────────────────
+    // Horse bounces 0.3 units high every 0.6 seconds
+    this.horseAnimator = new MyHorseAnimator(this.horses[0], 0.3, 0.6);
 
     // ── Kinematic state ──────────────────────────────────────────────────────
     this.speed         = 0;   // current forward speed (u/s), always ≥ 0
@@ -116,7 +121,23 @@ export class MyWagon extends CGFobject {
     if (this.scene.terrain && this.scene.terrain.ready)
       this.y = this.scene.terrain.heightAt(this.x, this.z);
 
-    // ── Wheel spin ────────────────────────────────────────────────────────────
+    // ── Animations ────────────────────────────────────────────────────────────
+    if (this.speed > 0.1) {
+        // If it was disabled, re-enable it using current time to prevent time-skipping
+        if (!this.horseAnimator.active) this.horseAnimator.enable(this.scene.time);
+        this.horseAnimator.update(this.scene.time);
+    } else {
+        // Wagon is stopped: stop animating and snap horse back to standing flat
+        if (this.horseAnimator.active) {
+            this.horseAnimator.disable();
+            for (const h of this.horses) {
+                h.animYOffset = 0;
+                h.animPitchOffset = 0;
+            }
+        }
+    }
+
+    // ── Wheel spin (Physics/Kinematic) ─────────────────────────────────────────
     // dist is in world units; convert to local (pre-scale) before dividing by radius.
     const localDist = dist / this.scale;
     this.frontWheel.spinAngle += localDist / FRONT_WHEEL_RADIUS;

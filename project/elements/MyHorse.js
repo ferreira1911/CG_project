@@ -30,8 +30,15 @@ export class MyHorse extends CGFobject {
     // OBJ winding is inconsistent — disable culling so back-faced tris still draw.
     gl.disable(gl.CULL_FACE);
     this.scene.pushMatrix();
-    this.scene.translate(this.x, this.y, this.z);
+    const yOffset = this.animYOffset || 0;
+    this.scene.translate(this.x, this.y + yOffset, this.z);
     this.scene.rotate(this.yaw, 0, 1, 0);
+    
+    // Pitch (galloping tilt) - rotation around local Z axis because horse faces +X
+    const pitchOffset = this.animPitchOffset || 0;
+    if (pitchOffset !== 0) {
+        this.scene.rotate(pitchOffset, 0, 0, 1);
+    }
     this.scene.scale(this.scale, this.scale, this.scale);
     this.scene.translate(0, this.footOffset, 0);
     this.model.display();
