@@ -245,7 +245,30 @@ export class MyScene extends CGFscene {
     if (this.grass2) this.grass2.setTime(this.time);
     if (this.grass3) this.grass3.setTime(this.time);
     if (this.grass4) this.grass4.setTime(this.time);
-    if (this.wagon) this.wagon.update(dt, this.interface);
+    
+    if (this.wagon) {
+        this.wagon.update(dt, this.interface);
+        
+        // Update HTML HUD
+        const hpInt = Math.ceil(this.wagon.hp);
+        const hpPercent = (this.wagon.hp / this.wagon.maxHp) * 100;
+        
+        const hpNumEl = document.getElementById('hp-number');
+        const hpBarEl = document.getElementById('hp-bar');
+        if (hpNumEl && hpBarEl) {
+            hpNumEl.innerText = hpInt;
+            hpBarEl.style.width = Math.max(0, hpPercent) + '%';
+            
+            // Color thresholds
+            if (hpPercent > 50) {
+                hpBarEl.style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
+            } else if (hpPercent > 20) {
+                hpBarEl.style.background = 'linear-gradient(90deg, #ffb300, #ffd54f)';
+            } else {
+                hpBarEl.style.background = 'linear-gradient(90deg, #e53935, #ef5350)';
+            }
+        }
+    }
   }
 
   display() {
@@ -262,10 +285,18 @@ export class MyScene extends CGFscene {
       // 1. Elastic Camera Lag: Add up to 1.5 units of distance at max speed
       const speedLag   = (w.speed / 8.0) * 1.5; // 8.0 is MAX_SPEED
 
+      // Camera shake from collisions
+      let shakeY = 0;
+      if (this.cameraShake > 0) {
+          // Fast sine wave scaled by the current shake intensity
+          shakeY = Math.sin(this.time * 40) * this.cameraShake;
+          this.cameraShake = Math.max(0, this.cameraShake - 0.05); // decay
+      }
+
       // When intro is running, start far back and high up, dropping smoothly into place
       const CAM_DIST   = 18 + speedLag + (introY * 0.4); 
-      const CAM_HEIGHT =  9 + introY;
-      const CAM_LOOK   =  3 + (introY * 0.1); 
+      const CAM_HEIGHT =  9 + introY + shakeY;
+      const CAM_LOOK   =  3 + (introY * 0.1) + (shakeY * 0.5); 
       
       // 2. Steering Lean (Centrifugal Force): Offset camera horizontally when turning
       // steeringAngle is positive when turning left, so camera swings right

@@ -66,6 +66,11 @@ export class MyWagon extends CGFobject {
     // ── Kinematic state ──────────────────────────────────────────────────────
     this.speed         = 0;   // current forward speed (u/s), always ≥ 0
     this.steeringAngle = 0;   // front wheel yaw offset (rad); + = left
+
+    // ── Gameplay state ───────────────────────────────────────────────────────
+    this.maxHp = 100;
+    this.hp = 100;
+    this.invulnerabilityTimer = 0;
   }
 
   // ── Horse positioning ───────────────────────────────────────────────────────
@@ -81,7 +86,7 @@ export class MyWagon extends CGFobject {
       h.y   = (this.scene.terrain && this.scene.terrain.ready)
                 ? this.scene.terrain.heightAt(h.x, h.z)
                 : this.y;
-      h.yaw = this.yaw + Math.PI / 2;
+      h.yaw = this.yaw + Math.PI / 2 + this.steeringAngle;
     }
   }
 
@@ -92,9 +97,21 @@ export class MyWagon extends CGFobject {
     if (iface.isKeyPressed('KeyW')) {
       this.speed = Math.min(this.speed + ACCELERATION * dt, MAX_SPEED);
     } else if (iface.isKeyPressed('KeyS')) {
-      this.speed = Math.max(this.speed - BRAKE * dt, 0);
+      // Brake forward movement only. Cannot manually reverse.
+      if (this.speed > 0) {
+          this.speed = Math.max(this.speed - BRAKE * dt, 0);
+      } else if (this.speed < 0) {
+          // If holding brake while knocked back, just let friction slow us to 0
+          this.speed = Math.min(this.speed + FRICTION * dt, 0);
+      }
     } else {
-      this.speed = Math.max(this.speed - FRICTION * dt, 0);
+      // Coasting: decay towards 0 from either direction
+      if (this.speed > 0) {
+          this.speed = Math.max(this.speed - FRICTION * dt, 0);
+      } else if (this.speed < 0) {
+          // If knocked back (negative speed), friction slows us back to 0
+          this.speed = Math.min(this.speed + FRICTION * dt, 0);
+      }
     }
 
     // ── Steering (A/D, with self-centering on release) ───────────────────────
@@ -120,6 +137,46 @@ export class MyWagon extends CGFobject {
     this.z -= Math.sin(this.yaw) * dist;
     if (this.scene.terrain && this.scene.terrain.ready)
       this.y = this.scene.terrain.heightAt(this.x, this.z);
+
+    // ── HP & Collisions ───────────────────────────────────────────────────────
+    // Passive damage (-1 HP per second)
+    if (this.hp > 0) {
+        this.hp = Math.max(0, this.hp - 1.0 * dt);
+    }
+
+    // Invulnerability timer
+    if (this.invulnerabilityTimer > 0) {
+        this.invulnerabilityTimer -= dt;
+    }
+
+    // Collision detection with rocks
+    if (this.invulnerabilityTimer <= 0 && this.scene.rocks) {
+        // Approximate wagon bounding radius (tighter hitbox)
+        const wagonRadius = 1.6 * this.scale;
+        
+        for (const rock of this.scene.rocks) {
+            // Rock radius: conservative bounding circle, tighter than before
+            const rockRadius = Math.max(rock.sx, rock.sz) * 0.5; 
+            
+            const dx = this.x - rock.x;
+            const dz = this.z - rock.z;
+            const distSq = dx * dx + dz * dz;
+            const minDist = wagonRadius + rockRadius;
+            
+            if (distSq < minDist * minDist) {
+                // Collision!
+                this.hp = Math.max(0, this.hp - 15);
+                this.invulnerabilityTimer = 1.0; // 1 second i-frames
+                
+                // Knockback: Reverse speed heavily to give maneuvering room
+                this.speed = -MAX_SPEED * 1.5; 
+                
+                // Trigger a camera shake on the scene
+                this.scene.cameraShake = 1.0;
+                break; // Only collide with one rock per frame
+            }
+        }
+    }
 
     // ── Animations ────────────────────────────────────────────────────────────
     if (this.speed > 0.1) {
