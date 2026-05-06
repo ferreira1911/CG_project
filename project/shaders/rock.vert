@@ -8,6 +8,7 @@ attribute vec2 aTextureCoord;
 
 uniform mat4 uMVMatrix;
 uniform mat4 uPMatrix;
+uniform mat4 uNMatrix;
 
 uniform sampler2D uNoiseMap;   // Unit 2 — greyscale noise texture
 uniform float uDeformScale;
@@ -34,7 +35,7 @@ float sampleNoise(vec3 p, vec3 n) {
 
 void main() {
     vTextureCoord = aTextureCoord;
-    vNormal = aVertexNormal;
+    vNormal = normalize(vec3(uNMatrix * vec4(aVertexNormal, 0.0)));
 
     // Per-rock skew + seed offset so every rock has a unique shape
     vec3 skew = vec3(

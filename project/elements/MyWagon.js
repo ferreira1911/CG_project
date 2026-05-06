@@ -80,13 +80,21 @@ export class MyWagon extends CGFobject {
   _updateHorsePositions() {
     const fwdDist = (BED_LENGTH * 0.5 + TONGUE_LENGTH) * this.scale;
     const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+    
+    // Shift the horse laterally into the turn (positive steering is left)
+    // Left vector is (-sin(yaw), 0, -cos(yaw))
+    const shiftFactor = 2.0 * this.scale;
+    const shiftX = -Math.sin(this.yaw) * this.steeringAngle * shiftFactor;
+    const shiftZ = -Math.cos(this.yaw) * this.steeringAngle * shiftFactor;
+    
     for (const h of this.horses) {
-      h.x   = this.x + cy * fwdDist;
-      h.z   = this.z - sy * fwdDist;
+      h.x   = this.x + cy * fwdDist + shiftX;
+      h.z   = this.z - sy * fwdDist + shiftZ;
       h.y   = (this.scene.terrain && this.scene.terrain.ready)
                 ? this.scene.terrain.heightAt(h.x, h.z)
                 : this.y;
-      h.yaw = this.yaw + Math.PI / 2 + this.steeringAngle;
+      // Rotate slightly less than the wheels to look like it's dragging the tongue
+      h.yaw = this.yaw + Math.PI / 2 + (this.steeringAngle * 0.6);
     }
   }
 

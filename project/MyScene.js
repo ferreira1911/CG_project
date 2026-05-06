@@ -36,6 +36,8 @@ export class MyScene extends CGFscene {
     this.gl.enable(this.gl.DEPTH_TEST);
     this.gl.enable(this.gl.CULL_FACE);
     this.gl.depthFunc(this.gl.LEQUAL);
+    
+    this.setGlobalAmbientLight(0.3, 0.3, 0.3, 1.0);
 
     this.initTextures();
     this.initShaders();
@@ -57,6 +59,11 @@ export class MyScene extends CGFscene {
     this.introAnimator = new MyCameraAnimator(this, 120, 6.0);
 
     this.setUpdatePeriod(16);  // ~60 Hz physics/input tick
+
+    // Cache HUD DOM elements for performance
+    this.hpNumEl = document.getElementById('hp-number');
+    this.hpBarEl = document.getElementById('hp-bar');
+    this.lastRenderedHp = -1; // Force first update
   }
 
   scatter() {
@@ -195,11 +202,9 @@ export class MyScene extends CGFscene {
 
   initShaders() {
     this.panoramaShader = new CGFshader(this.gl, "./shaders/sky.vert", "./shaders/sky.frag");
-    const lp = this.lights[0].position;
     this.panoramaShader.setUniformsValues({
       uSampler: 0,
-      time: 0,
-      uLightPos: [lp[0], lp[1], lp[2]]
+      time: 0
     });
 
     this.rockShader = new CGFshader(this.gl, "./shaders/rock.vert", "./shaders/rock.frag");
@@ -207,29 +212,23 @@ export class MyScene extends CGFscene {
       uColorMap: 0,
       uNormalMap: 1,
       uNoiseMap: 2,
-      uLightPos: [lp[0], lp[1], lp[2]],
       uDeformScale: 0.15,
       uSeed: 0.0
     });
 
     this.branchShader = new CGFshader(this.gl, "./shaders/branch.vert", "./shaders/branch.frag");
-    this.branchShader.setUniformsValues({
-
-      uLightPos: [lp[0], lp[1], lp[2]]
-    });
 
     this.clothShader = new CGFshader(this.gl, "./shaders/cloth.vert", "./shaders/cloth.frag");
     this.clothShader.setUniformsValues({
       uSampler: 0,
-      time: 0,
-      uLightPos: [lp[0], lp[1], lp[2]]
+      time: 0
     });
   }
 
   setDefaultAppearance() {
-    this.setAmbient(0.2, 0.4, 0.8, 1.0);
-    this.setDiffuse(0.2, 0.4, 0.8, 1.0);
-    this.setSpecular(0.2, 0.4, 0.8, 1.0);
+    this.setAmbient(0.3, 0.3, 0.3, 1.0); // Reduced from 0.8 blue
+    this.setDiffuse(0.8, 0.8, 0.8, 1.0);
+    this.setSpecular(0.1, 0.1, 0.1, 1.0);
     this.setShininess(10.0);
   }
 
@@ -249,23 +248,22 @@ export class MyScene extends CGFscene {
     if (this.wagon) {
         this.wagon.update(dt, this.interface);
         
-        // Update HTML HUD
+        // Update HTML HUD using cached elements and value diffing (prevents DOM thrashing)
         const hpInt = Math.ceil(this.wagon.hp);
-        const hpPercent = (this.wagon.hp / this.wagon.maxHp) * 100;
-        
-        const hpNumEl = document.getElementById('hp-number');
-        const hpBarEl = document.getElementById('hp-bar');
-        if (hpNumEl && hpBarEl) {
-            hpNumEl.innerText = hpInt;
-            hpBarEl.style.width = Math.max(0, hpPercent) + '%';
+        if (hpInt !== this.lastRenderedHp && this.hpNumEl && this.hpBarEl) {
+            this.lastRenderedHp = hpInt;
+            const hpPercent = (this.wagon.hp / this.wagon.maxHp) * 100;
+            
+            this.hpNumEl.innerText = hpInt;
+            this.hpBarEl.style.width = Math.max(0, hpPercent) + '%';
             
             // Color thresholds
             if (hpPercent > 50) {
-                hpBarEl.style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
+                this.hpBarEl.style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
             } else if (hpPercent > 20) {
-                hpBarEl.style.background = 'linear-gradient(90deg, #ffb300, #ffd54f)';
+                this.hpBarEl.style.background = 'linear-gradient(90deg, #ffb300, #ffd54f)';
             } else {
-                hpBarEl.style.background = 'linear-gradient(90deg, #e53935, #ef5350)';
+                this.hpBarEl.style.background = 'linear-gradient(90deg, #e53935, #ef5350)';
             }
         }
     }
@@ -326,6 +324,24 @@ export class MyScene extends CGFscene {
     this.updateProjectionMatrix();
     this.loadIdentity();
     this.applyViewMatrix();
+    
+    // ── Dynamic Lighting Update ──────────────────────────────────────────────
+    // Calculate Sun's light direction in Eye Space so custom shaders know where the light is
+    const sunWorld = vec4.fromValues(-112.0, 135.0, -100.0, 0.0);
+    const sunEye = vec4.create();
+    vec4.transformMat4(sunEye, sunWorld, this.camera.getViewMatrix());
+    const lp = [sunEye[0], sunEye[1], sunEye[2]];
+    
+    this.rockShader.setUniformsValues({ uLightPos: lp });
+    this.branchShader.setUniformsValues({ uLightPos: lp });
+    this.clothShader.setUniformsValues({ uLightPos: lp });
+    this.panoramaShader.setUniformsValues({ uLightPos: lp });
+    
+    if (this.terrain && this.terrain.terrainShader) {
+        this.terrain.terrainShader.setUniformsValues({ uLightPos: lp });
+    }
+    
+    this.lights[0].update();
 
     if (this.displayAxis) this.axis.display();
 
@@ -344,11 +360,23 @@ export class MyScene extends CGFscene {
       this._scattered = true;
     }
 
+    // ── Distance Culling (Draw Distance) ──────────────────────────────────
+    // Only draw objects within a certain radius of the camera to save GPU cycles
+    const DRAW_DIST_SQ = 160 * 160; // 160 units draw distance
+    const cx = this.camera.position[0];
+    const cz = this.camera.position[2];
+
     // Rocks
     if (this.rocks.length > 0) {
       this.setActiveShader(this.rockShader);
       this.rockNoiseMap.bind(2);
-      for (const r of this.rocks) r.display();
+      for (const r of this.rocks) {
+          const dx = r.x - cx;
+          const dz = r.z - cz;
+          if (dx * dx + dz * dz < DRAW_DIST_SQ) {
+              r.display();
+          }
+      }
       this.setActiveShader(this.defaultShader);
     }
 
@@ -357,18 +385,22 @@ export class MyScene extends CGFscene {
       this.setActiveShader(this.branchShader);
       
       this.branchShader.setUniformsValues({ uLength: 1.0 });
-      for (const f of this.floras) f.displayBranches();
+      for (const f of this.floras) {
+          const dx = f.x - cx;
+          const dz = f.z - cz;
+          if (dx * dx + dz * dz < DRAW_DIST_SQ) f.displayBranches();
+      }
 
       this.gl.disable(this.gl.CULL_FACE);
-
       this.branchShader.setUniformsValues({ uLength: 0.5 });
 
-
-      for (const f of this.floras) f.displayLeaves();
+      for (const f of this.floras) {
+          const dx = f.x - cx;
+          const dz = f.z - cz;
+          if (dx * dx + dz * dz < DRAW_DIST_SQ) f.displayLeaves();
+      }
       
       this.gl.enable(this.gl.CULL_FACE);
-
-
       this.setActiveShader(this.defaultShader);
     }
 
