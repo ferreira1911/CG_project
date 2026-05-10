@@ -9,10 +9,12 @@ import { MyCameraAnimator } from "./animators/MyCameraAnimator.js";
 import { MyUnitCube } from "./geometric/MyUnitCube.js";
 import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
+import { MyHayBale } from "./elements/MyHayBale.js";
 import { r, pickSpot } from "./utils.js";
 
-const ROCK_COUNT   = 40;
-const FLOWER_COUNT = 80;
+const ROCK_COUNT    = 40;
+const FLOWER_COUNT  = 80;
+const HAYBALE_COUNT = 1;
 
 
 /**
@@ -41,7 +43,6 @@ export class MyScene extends CGFscene {
 
     this.initTextures();
     this.initShaders();
-    this.initFloraMaterials();
     this.initPrimitives();
 
     this.axis = new CGFaxis(this);
@@ -50,6 +51,7 @@ export class MyScene extends CGFscene {
 
     this.rocks    = [];
     this.floras   = [];
+    this.haybales = [];
     this._scattered = false;
 
     this.displayAxis = true;
@@ -151,6 +153,19 @@ export class MyScene extends CGFscene {
     this.grass2 = new MyGrass(this, this.grassTexture, this.terrain);
     this.grass3 = new MyGrass(this, this.grassTexture, this.terrain);
     this.grass4 = new MyGrass(this, this.grassTexture, this.terrain);
+
+    // Hay bales: scatter around the terrain avoiding the path
+    for (let i = 0; i < HAYBALE_COUNT; i++) {
+      let bx, bz;
+      do {
+        bx = r(-80, 80);
+        bz = r(-80, 80);
+      } while (!this.terrain.isPathClear(bx, bz, 2.0));
+      const by    = this.terrain.heightAt(bx, bz);
+      const rotY  = r(0, Math.PI * 2);     // Random orientation
+      const scale = r(0.8, 1.3);           // Slight size variation
+      this.haybales.push(new MyHayBale(this, bx, by, bz, rotY, scale, this.hayTexture));
+    }
   }
 
   initLights() {
@@ -187,12 +202,10 @@ export class MyScene extends CGFscene {
     this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
     this.grassTexture = new CGFtexture(this, './resources/textures/grass.png');
     this.horseTexture = new CGFtexture(this, './resources/Horse/Tex_Horse.png');
-    this.barkTexture = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
+    this.barkTexture  = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
+    this.hayTexture   = new CGFtexture(this, './resources/textures/hay.jpg');
   }
 
-  initFloraMaterials() {
-      // appearances are now handled per-instance or shared in MyFlora
-  }
 
   initPrimitives() {
     this.cube     = new MyUnitCube(this);
@@ -335,7 +348,6 @@ export class MyScene extends CGFscene {
     this.rockShader.setUniformsValues({ uLightPos: lp });
     this.branchShader.setUniformsValues({ uLightPos: lp });
     this.clothShader.setUniformsValues({ uLightPos: lp });
-    this.panoramaShader.setUniformsValues({ uLightPos: lp });
     
     if (this.terrain && this.terrain.terrainShader) {
         this.terrain.terrainShader.setUniformsValues({ uLightPos: lp });
@@ -405,6 +417,22 @@ export class MyScene extends CGFscene {
     }
 
     if (this.wagon) this.wagon.display();
+
+    // Hay bales — rendered in default shader, with distance culling
+    if (this.haybales) {
+      this.setActiveShader(this.defaultShader);
+      for (const bale of this.haybales) {
+        // Skip only if picked up AND not currently dropping (animator active = it's in the air)
+        if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) {
+          // Only render if it's the one on the wagon
+          if (bale !== this.wagon?.carriedBale) continue;
+        }
+        const dx = bale.x - cx;
+        const dz = bale.z - cz;
+        if (dx * dx + dz * dz < DRAW_DIST_SQ) bale.display();
+      }
+    }
+
     if (this.grass1) this.grass1.display();
     if (this.grass2) this.grass2.display();
     if (this.grass3) this.grass3.display();

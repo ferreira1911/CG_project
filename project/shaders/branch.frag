@@ -1,5 +1,5 @@
 #ifdef GL_ES
-precision highp float;
+precision mediump float;
 #endif
 
 varying vec2 vTextureCoord;
@@ -15,14 +15,9 @@ void main() {
     if (uUseTexture) {
         color *= texture2D(uSampler, vTextureCoord);
     }
-    
-    vec3 lightDir = normalize(uLightPos);
-    float d = dot(normalize(vNormal), lightDir);
-    
-    // Two-sided lighting:
-    // Side facing light (d > 0) is brighter (up to 1.0)
-    // Side facing away (d < 0) is dimmer (minimum 0.4)
+
+    float d = dot(normalize(vNormal), normalize(uLightPos));
     float lighting = 0.4 + 0.6 * max(d, 0.0) + 0.2 * max(-d, 0.0);
-    
+
     gl_FragColor = vec4(color.rgb * lighting, color.a);
 }

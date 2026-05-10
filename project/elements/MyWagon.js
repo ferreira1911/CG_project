@@ -4,7 +4,8 @@ import { MyWagonCover }  from './MyWagonCover.js';
 import { MyWagonTongue } from './MyWagonTongue.js';
 import { MyWagonWheel }  from './MyWagonWheel.js';
 import { MyHorse }       from './MyHorse.js';
-import { MyHorseAnimator } from '../animators/MyHorseAnimator.js';
+import { MyHorseAnimator }    from '../animators/MyHorseAnimator.js';
+import { MyHayBaleAnimator }  from '../animators/MyHayBaleAnimator.js';
 
 // ── Wagon geometry constants ─────────────────────────────────────────────────
 const BED_LENGTH         = 8.0;
@@ -71,6 +72,12 @@ export class MyWagon extends CGFobject {
     this.maxHp = 100;
     this.hp = 100;
     this.invulnerabilityTimer = 0;
+
+    // ── Hay Bale state ──────────────────────────────────────────────────────
+    this.carriedBale    = null;  // MyHayBale currently on the wagon, or null
+    this._pPressedLast  = false; // Edge-detect for P key (pickup)
+    this._lPressedLast  = false; // Edge-detect for L key (drop)
+    this.BALE_CARRY_Y   = BACK_WHEEL_RADIUS + BED_HEIGHT + 1.0;
   }
 
   // ── Horse positioning ───────────────────────────────────────────────────────
@@ -210,6 +217,69 @@ export class MyWagon extends CGFobject {
 
     // ── Horse follow ──────────────────────────────────────────────────────────
     this._updateHorsePositions();
+
+    // ── Hay Bale pickup / drop (separate keys, edge-triggered) ────────────────
+    const pNow = iface.isKeyPressed('KeyP');
+    const lNow = iface.isKeyPressed('KeyL');
+
+    // P — pick up nearest bale (also works mid-drop, cancelling the animation)
+    if (pNow && !this._pPressedLast && !this.carriedBale && this.scene.haybales) {
+        const PICKUP_RADIUS = 6.0;
+        let nearest = null, nearestDist = Infinity;
+        for (const bale of this.scene.haybales) {
+            // Allow picking up a bale that's mid-drop (cancel animation)
+            if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) continue;
+            const dx = bale.x - this.x;
+            const dz = bale.z - this.z;
+            const d  = Math.sqrt(dx * dx + dz * dz);
+            if (d < PICKUP_RADIUS && d < nearestDist) {
+                nearestDist = d;
+                nearest = bale;
+            }
+        }
+        if (nearest) {
+            if (nearest.dropAnimator) nearest.dropAnimator.disable();
+            nearest.isPickedUp = true;
+            this.carriedBale = nearest;
+        }
+    }
+
+    // L — drop the carried bale
+    if (lNow && !this._lPressedLast && this.carriedBale) {
+        const bale = this.carriedBale;
+        this.carriedBale = null;
+
+        bale.groundY = this.scene.terrain?.heightAt(bale.x, bale.z) ?? this.y;
+        bale.renderY = this.y + this.BALE_CARRY_Y * this.scale;
+
+        bale.dropAnimator = new MyHayBaleAnimator(bale, bale.renderY, bale.groundY);
+        bale.dropAnimator.enable(this.scene.time);
+    }
+
+    this._pPressedLast = pNow;
+    this._lPressedLast = lNow;
+
+    // Update carried bale to sit centred on the wagon bed
+    if (this.carriedBale) {
+        const c = this.carriedBale;
+        const cy2 = Math.cos(this.yaw), sy2 = Math.sin(this.yaw);
+        c.x = this.x - cy2 * (BED_LENGTH * 0.15 * this.scale);
+        c.z = this.z + sy2 * (BED_LENGTH * 0.15 * this.scale);
+        c.renderY = this.y + this.BALE_CARRY_Y * this.scale;
+    }
+
+    // Tick any active drop animators
+    if (this.scene.haybales) {
+        for (const bale of this.scene.haybales) {
+            if (bale.dropAnimator && bale.dropAnimator.active) {
+                bale.dropAnimator.update(this.scene.time);
+                if (!bale.dropAnimator.active) {
+                    bale.isPickedUp = false;
+                    bale.renderY    = bale.groundY;
+                }
+            }
+        }
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
