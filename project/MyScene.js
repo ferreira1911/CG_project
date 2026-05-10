@@ -14,7 +14,7 @@ import { r, pickSpot } from "./utils.js";
 
 const ROCK_COUNT    = 40;
 const FLOWER_COUNT  = 80;
-const HAYBALE_COUNT = 1;
+const HAYBALE_COUNT = 5;
 
 
 /**
@@ -422,10 +422,9 @@ export class MyScene extends CGFscene {
     if (this.haybales) {
       this.setActiveShader(this.defaultShader);
       for (const bale of this.haybales) {
-        // Skip only if picked up AND not currently dropping (animator active = it's in the air)
+        // Skip if the bale is being carried by the wagon (wagon handles its display locally)
         if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) {
-          // Only render if it's the one on the wagon
-          if (bale !== this.wagon?.carriedBale) continue;
+          if (this.wagon?.carriedBales.includes(bale)) continue;
         }
         const dx = bale.x - cx;
         const dz = bale.z - cz;

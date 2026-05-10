@@ -74,10 +74,12 @@ export class MyWagon extends CGFobject {
     this.invulnerabilityTimer = 0;
 
     // ── Hay Bale state ──────────────────────────────────────────────────────
-    this.carriedBale    = null;  // MyHayBale currently on the wagon, or null
+    this.carriedBales   = [];    // Array of up to 2 MyHayBale currently on the wagon
     this._pPressedLast  = false; // Edge-detect for P key (pickup)
     this._lPressedLast  = false; // Edge-detect for L key (drop)
-    this.BALE_CARRY_Y   = BACK_WHEEL_RADIUS + BED_HEIGHT + 1.0;
+
+    // Sitting on the bed floor (BACK_WHEEL_RADIUS + BED_HEIGHT)
+    this.BALE_CARRY_Y   = BACK_WHEEL_RADIUS + BED_HEIGHT;
   }
 
   // ── Horse positioning ───────────────────────────────────────────────────────
@@ -223,12 +225,15 @@ export class MyWagon extends CGFobject {
     const lNow = iface.isKeyPressed('KeyL');
 
     // P — pick up nearest bale (also works mid-drop, cancelling the animation)
-    if (pNow && !this._pPressedLast && !this.carriedBale && this.scene.haybales) {
+    if (pNow && !this._pPressedLast && this.carriedBales.length < 2 && this.scene.haybales) {
         const PICKUP_RADIUS = 6.0;
         let nearest = null, nearestDist = Infinity;
         for (const bale of this.scene.haybales) {
             // Allow picking up a bale that's mid-drop (cancel animation)
             if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) continue;
+            // Also skip bales we are already carrying
+            if (this.carriedBales.includes(bale)) continue;
+
             const dx = bale.x - this.x;
             const dz = bale.z - this.z;
             const d  = Math.sqrt(dx * dx + dz * dz);
@@ -240,14 +245,13 @@ export class MyWagon extends CGFobject {
         if (nearest) {
             if (nearest.dropAnimator) nearest.dropAnimator.disable();
             nearest.isPickedUp = true;
-            this.carriedBale = nearest;
+            this.carriedBales.push(nearest);
         }
     }
 
-    // L — drop the carried bale
-    if (lNow && !this._lPressedLast && this.carriedBale) {
-        const bale = this.carriedBale;
-        this.carriedBale = null;
+    // L — drop the carried bale (drops the most recently picked up one)
+    if (lNow && !this._lPressedLast && this.carriedBales.length > 0) {
+        const bale = this.carriedBales.pop();
 
         bale.groundY = this.scene.terrain?.heightAt(bale.x, bale.z) ?? this.y;
         bale.renderY = this.y + this.BALE_CARRY_Y * this.scale;
@@ -259,12 +263,10 @@ export class MyWagon extends CGFobject {
     this._pPressedLast = pNow;
     this._lPressedLast = lNow;
 
-    // Update carried bale to sit centred on the wagon bed
-    if (this.carriedBale) {
-        const c = this.carriedBale;
-        const cy2 = Math.cos(this.yaw), sy2 = Math.sin(this.yaw);
-        c.x = this.x - cy2 * (BED_LENGTH * 0.15 * this.scale);
-        c.z = this.z + sy2 * (BED_LENGTH * 0.15 * this.scale);
+    // Update carried bales: we only update their state here.
+    // They are rendered in local space in display() so they stay perfectly in the wagon.
+    for (let i = 0; i < this.carriedBales.length; i++) {
+        const c = this.carriedBales[i];
         c.renderY = this.y + this.BALE_CARRY_Y * this.scale;
     }
 
@@ -301,6 +303,62 @@ export class MyWagon extends CGFobject {
     this.scene.translate(-BED_LENGTH * 0.25, BACK_WHEEL_RADIUS + BED_HEIGHT + RAIL_HEIGHT, 0);
     this.cover.display();
     this.scene.popMatrix();
+
+    // Render carried hay bales in local wagon space
+    for (let i = 0; i < this.carriedBales.length; i++) {
+        const bale = this.carriedBales[i];
+        const offsetMultiplier = (i === 0) ? 0.15 : -0.15;
+        const localX = -BED_LENGTH * offsetMultiplier;
+        
+        this.scene.pushMatrix();
+        // localX is forward/back. BALE_CARRY_Y is height.
+        // We add a Z offset to center the bale (it's LENGTH long) and move it left.
+        // Since bale grows towards +Z (right), we shift it by -LENGTH and a bit more for "left".
+        const localZ = -(bale.LENGTH * bale.scale * 0.5) - 0.5; 
+        this.scene.translate(localX, this.BALE_CARRY_Y, localZ);
+        // We need a version of bale.display that doesn't use world coords, 
+        // or we just manually replicate its drawing logic here.
+        // Actually, let's just use the bale's internal geometry.
+        
+        // Disable culling for the bale
+        this.scene.gl.disable(this.scene.gl.CULL_FACE);
+        
+        this.scene.pushMatrix();
+        // Shift up by radius so the cylinder side sits on the floor
+        this.scene.translate(0, bale.RADIUS * bale.scale, 0);
+        // Local orientation: perpendicular to wagon axis (lying along Z)
+        this.scene.rotate(Math.PI / 2, 1, 0, 0);
+        
+        bale.mat.apply();
+        
+        // Body
+        this.scene.pushMatrix();
+        // The cylinder grows along its local Y. 
+        // Our X-rotation (line 330) made local Y align with wagon-local Z.
+        this.scene.scale(bale.RADIUS * bale.scale, bale.LENGTH * bale.scale, bale.RADIUS * bale.scale);
+        bale.body.display();
+        this.scene.popMatrix();
+
+        // Caps
+        // Top cap
+        this.scene.pushMatrix();
+        this.scene.translate(0, bale.LENGTH * bale.scale, 0);
+        this.scene.rotate(-Math.PI / 2, 1, 0, 0);
+        this.scene.scale(bale.RADIUS * bale.scale, bale.RADIUS * bale.scale, 1);
+        bale.cap.display();
+        this.scene.popMatrix();
+
+        // Bottom cap
+        this.scene.pushMatrix();
+        this.scene.rotate(Math.PI / 2, 1, 0, 0);
+        this.scene.scale(bale.RADIUS * bale.scale, bale.RADIUS * bale.scale, 1);
+        bale.cap.display();
+        this.scene.popMatrix();
+
+        this.scene.popMatrix(); // Orientation
+        this.scene.gl.enable(this.scene.gl.CULL_FACE);
+        this.scene.popMatrix(); // Translation
+    }
 
     // Tongue tucked under the bed front so it visually attaches to the wagon.
     this.scene.pushMatrix();
