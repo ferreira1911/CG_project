@@ -38,10 +38,28 @@ export class MyTerrain extends CGFobject {
         grab("resources/textures/terrain/terrain_height.jpg", (data, w, h) => {
             this._heightData = data; this._heightW = w; this._heightH = h;
             this._heightReady = true;
+            this._syncShaderUniforms();
         });
         grab("resources/textures/terrain/mask.jpg", (data, w, h) => {
             this._maskData = data; this._maskW = w; this._maskH = h;
             this._maskReady = true;
+        });
+    }
+
+    _syncShaderUniforms() {
+        if (!this.terrainShader) return;
+
+        const texelSize = (this._heightReady && this._heightW && this._heightH)
+            ? [1 / this._heightW, 1 / this._heightH]
+            : [1 / 512, 1 / 512];
+
+        this.terrainShader.setUniformsValues({
+            uSampler2: 1,
+            uSampler3: 2,
+            uSampler4: 3,
+            uSampler5: 4,
+            uTerrainHeight: this.maxHeight,
+            uHeightTexel: texelSize,
         });
     }
 
@@ -80,9 +98,24 @@ export class MyTerrain extends CGFobject {
     // Probabilistic grass placement so the transition around the path fades out
     // instead of cutting off sharply.
     isPathClear(worldX, worldZ, radius) {
-        void radius;
+        const sampleRadius = Math.max(radius, 1.0);
+        const diag = sampleRadius * 0.70710678;
+        const offsets = [
+            [0, 0],
+            [sampleRadius, 0],
+            [-sampleRadius, 0],
+            [0, sampleRadius],
+            [0, -sampleRadius],
+            [diag, diag],
+            [diag, -diag],
+            [-diag, diag],
+            [-diag, -diag],
+        ];
 
-        const maskVal = this._sampleR(this._maskData, this._maskW, this._maskH, worldX, worldZ);
+        let maskVal = 0;
+        for (const [dx, dz] of offsets) {
+            maskVal = Math.max(maskVal, this._sampleR(this._maskData, this._maskW, this._maskH, worldX + dx, worldZ + dz));
+        }
 
         // Strong path signal: always reject.
         if (maskVal > 150) return false;
@@ -109,16 +142,14 @@ export class MyTerrain extends CGFobject {
         this.appearance.setTextureWrap('REPEAT', 'REPEAT');
 
         this.terrainShader = new CGFshader(this.scene.gl, "shaders/terrain.vert", "shaders/terrain.frag");
-        
-        // Define em que "canal" (unidade) cada textura vai estar
-        // uSampler (0) é o colorMap, definido automaticamente pelo appearance
-        this.terrainShader.setUniformsValues({ uSampler2: 1, uSampler3: 2, uSampler4: 3, uSampler5: 4 });
+        this._syncShaderUniforms();
     }
 
     display() {
         this.scene.pushMatrix();
 
         this.scene.setActiveShader(this.terrainShader);
+        this._syncShaderUniforms();
         
         // Ligar as texturas aos canais correspondentes do shader
         this.heightMap.bind(1);

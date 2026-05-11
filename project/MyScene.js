@@ -40,7 +40,7 @@ export class MyScene extends CGFscene {
     this.gl.enable(this.gl.CULL_FACE);
     this.gl.depthFunc(this.gl.LEQUAL);
     
-    this.setGlobalAmbientLight(0.3, 0.3, 0.3, 1.0);
+    this.setGlobalAmbientLight(0.2, 0.2, 0.22, 1.0);
 
     this.initTextures();
     this.initPrimitives();
@@ -205,7 +205,7 @@ export class MyScene extends CGFscene {
     // Cor do Sol (amarelo muito claro)
     this.lights[0].setDiffuse(1.0, 0.98, 0.9, 1.0);
     this.lights[0].setSpecular(1.0, 0.98, 0.9, 1.0);
-    this.lights[0].setAmbient(0.4, 0.4, 0.45, 1.0);
+    this.lights[0].setAmbient(0.18, 0.18, 0.2, 1.0);
 
     this.lights[0].enable();
     this.lights[0].update();
@@ -272,7 +272,7 @@ export class MyScene extends CGFscene {
   }
 
   setDefaultAppearance() {
-    this.setAmbient(0.3, 0.3, 0.3, 1.0); // Reduced from 0.8 blue
+    this.setAmbient(0.22, 0.22, 0.22, 1.0); // Keep the base pass from flattening the scene
     this.setDiffuse(0.8, 0.8, 0.8, 1.0);
     this.setSpecular(0.1, 0.1, 0.1, 1.0);
     this.setShininess(10.0);

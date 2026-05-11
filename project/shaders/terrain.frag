@@ -17,11 +17,13 @@ void main() {
     vec4 mask = texture2D(uSampler4, vTextureCoord);
 
     // mask.r: 0.0 -> terrain, 1.0 -> path.
-    vec4 texColor = mix(colorTerrain, colorPath, mask.r);
+    float pathBlend = smoothstep(0.18, 0.82, mask.r);
+    vec4 texColor = mix(colorTerrain, colorPath, pathBlend);
     
-    // Diffuse Lighting
+    // Slightly stronger directional lighting so the relief reads as terrain.
     vec3 lightDir = normalize(uLightPos);
-    float diffuse = max(dot(normalize(vNormal), lightDir), 0.35); // 0.35 ambient floor
+    float diffuse = max(dot(normalize(vNormal), lightDir), 0.0);
+    float lighting = 0.18 + 0.82 * diffuse;
     
-    gl_FragColor = vec4(texColor.rgb * diffuse, texColor.a);
+    gl_FragColor = vec4(texColor.rgb * lighting, texColor.a);
 }
