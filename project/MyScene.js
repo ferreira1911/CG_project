@@ -10,11 +10,12 @@ import { MyUnitCube } from "./geometric/MyUnitCube.js";
 import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
 import { MyHayBale } from "./elements/MyHayBale.js";
+import { MyArrow } from "./elements/MyArrow.js";
 import { r, pickSpot } from "./utils.js";
 
-const ROCK_COUNT    = 40;
+const ROCK_COUNT    = 30;
 const FLOWER_COUNT  = 80;
-const HAYBALE_COUNT = 5;
+const HAYBALE_COUNT = 3;
 
 
 /**
@@ -42,8 +43,10 @@ export class MyScene extends CGFscene {
     this.setGlobalAmbientLight(0.3, 0.3, 0.3, 1.0);
 
     this.initTextures();
-    this.initShaders();
     this.initPrimitives();
+    this.initShaders();
+
+    this.arrow = new MyArrow(this);
 
     this.axis = new CGFaxis(this);
     this.panorama = new MyPanorama(this, this.panoramaTexture);
@@ -57,12 +60,15 @@ export class MyScene extends CGFscene {
     this.displayAxis = true;
     this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
-    // Start 120 units high, drop over 6 seconds
-    this.introAnimator = new MyCameraAnimator(this, 120, 6.0);
+    // Start 120 units high. Hold for 4 seconds (panorama shot), then drop over 4 seconds.
+    this.introAnimator = new MyCameraAnimator(this, 120, 4.0, 4.0);
 
     this.setUpdatePeriod(16);  // ~60 Hz physics/input tick
 
     // Cache HUD DOM elements for performance
+    this.hudContainerEl = document.getElementById('hud-container');
+    if (this.hudContainerEl) this.hudContainerEl.style.display = 'none';
+    
     this.hpNumEl = document.getElementById('hp-number');
     this.hpBarEl = document.getElementById('hp-bar');
     this.lastRenderedHp = -1; // Force first update
@@ -152,19 +158,37 @@ export class MyScene extends CGFscene {
     this.grass1 = new MyGrass(this, this.grassTexture, this.terrain);
     this.grass2 = new MyGrass(this, this.grassTexture, this.terrain);
     this.grass3 = new MyGrass(this, this.grassTexture, this.terrain);
-    this.grass4 = new MyGrass(this, this.grassTexture, this.terrain);
 
     // Hay bales: scatter around the terrain avoiding the path
     for (let i = 0; i < HAYBALE_COUNT; i++) {
-      let bx, bz;
-      do {
-        bx = r(-80, 80);
-        bz = r(-80, 80);
-      } while (!this.terrain.isPathClear(bx, bz, 2.0));
-      const by    = this.terrain.heightAt(bx, bz);
-      const rotY  = r(0, Math.PI * 2);     // Random orientation
-      const scale = r(0.8, 1.3);           // Slight size variation
-      this.haybales.push(new MyHayBale(this, bx, by, bz, rotY, scale, this.hayTexture));
+      this.spawnHayBale();
+    }
+  }
+
+  /**
+   * Spawns a new hay bale at a random valid location.
+   */
+  spawnHayBale() {
+    let bx, bz;
+    do {
+      bx = r(-80, 80);
+      bz = r(-80, 80);
+    } while (!this.terrain.isPathClear(bx, bz, 2.0));
+    
+    const by    = this.terrain.heightAt(bx, bz);
+    const rotY  = r(0, Math.PI * 2);     // Random orientation
+    const scale = r(0.8, 1.3);           // Slight size variation
+    this.haybales.push(new MyHayBale(this, bx, by, bz, rotY, scale, this.hayTexture));
+  }
+
+  /**
+   * Replaces a specific hay bale (e.g., after delivery) with a new one.
+   */
+  replaceBale(bale) {
+    const index = this.haybales.indexOf(bale);
+    if (index !== -1) {
+        this.haybales.splice(index, 1);
+        this.spawnHayBale();
     }
   }
 
@@ -236,6 +260,8 @@ export class MyScene extends CGFscene {
       uSampler: 0,
       time: 0
     });
+
+    this.arrowShader = new CGFshader(this.gl, "./shaders/arrow.vert", "./shaders/arrow.frag");
   }
 
   setDefaultAppearance() {
@@ -258,8 +284,28 @@ export class MyScene extends CGFscene {
     if (this.grass3) this.grass3.setTime(this.time);
     if (this.grass4) this.grass4.setTime(this.time);
     
+    if (this.arrowShader) {
+        this.arrowShader.setUniformsValues({ uTime: this.time });
+    }
+    
+    const isIntroActive = this.introAnimator && this.introAnimator.active;
+
     if (this.wagon) {
-        this.wagon.update(dt, this.interface);
+        if (!isIntroActive) {
+            this.wagon.update(dt, this.interface);
+            
+            // Reveal HUD once the intro is over
+            if (this.hudContainerEl && this.hudContainerEl.style.display === 'none') {
+                this.hudContainerEl.style.display = 'flex';
+            }
+        } else {
+            // During the intro, the terrain image might finish loading async.
+            // We need to snap the wagon and horses to the correct height so they aren't buried!
+            if (this.terrain && this.terrain.ready) {
+                this.wagon.y = this.terrain.heightAt(this.wagon.x, this.wagon.z);
+                this.wagon._updateHorsePositions();
+            }
+        }
         
         // Update HTML HUD using cached elements and value diffing (prevents DOM thrashing)
         const hpInt = Math.ceil(this.wagon.hp);
@@ -307,7 +353,8 @@ export class MyScene extends CGFscene {
       // When intro is running, start far back and high up, dropping smoothly into place
       const CAM_DIST   = 18 + speedLag + (introY * 0.4); 
       const CAM_HEIGHT =  9 + introY + shakeY;
-      const CAM_LOOK   =  3 + (introY * 0.1) + (shakeY * 0.5); 
+      // Look at the horizon (sky/scenery) when high up, then pan down to the wagon (3.0)
+      const CAM_LOOK   = 3.0 + (introY * 1.0) + (shakeY * 0.5); 
       
       // 2. Steering Lean (Centrifugal Force): Offset camera horizontally when turning
       // steeringAngle is positive when turning left, so camera swings right
@@ -420,16 +467,31 @@ export class MyScene extends CGFscene {
 
     // Hay bales — rendered in default shader, with distance culling
     if (this.haybales) {
-      this.setActiveShader(this.defaultShader);
       for (const bale of this.haybales) {
         // Skip if the bale is being carried by the wagon (wagon handles its display locally)
         if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) {
           if (this.wagon?.carriedBales.includes(bale)) continue;
         }
+        
         const dx = bale.x - cx;
         const dz = bale.z - cz;
-        if (dx * dx + dz * dz < DRAW_DIST_SQ) bale.display();
+        if (dx * dx + dz * dz < DRAW_DIST_SQ) {
+            this.setActiveShader(this.defaultShader);
+            bale.display();
+            
+            // If not picked up and on ground, show the guidance arrow
+            if (!bale.isPickedUp && this.arrow) {
+                this.setActiveShader(this.arrowShader);
+                this.pushMatrix();
+                // Use the bale's built-in calculation for its top-center coordinates
+                const [cx, cy, cz] = bale.getTopCenter();
+                this.translate(cx, cy, cz);
+                this.arrow.display();
+                this.popMatrix();
+            }
+        }
       }
+      this.setActiveShader(this.defaultShader);
     }
 
     if (this.grass1) this.grass1.display();

@@ -49,6 +49,19 @@ export class MyHayBale extends CGFobject {
         }
     }
 
+    /**
+     * Returns the world coordinates [x, y, z] for the top center of the hay bale.
+     * Used for positioning UI markers like the guidance arrow above it.
+     */
+    getTopCenter() {
+        const halfLen = this.LENGTH * this.scale * 0.5;
+        const cx = this.x - Math.cos(this.rotY) * halfLen;
+        const cz = this.z + Math.sin(this.rotY) * halfLen;
+        // The top of the bale + a 0.5 unit vertical gap
+        const cy = this.y + (this.RADIUS * this.scale * 2.0) + 0.5;
+        return [cx, cy, cz];
+    }
+
     display() {
         const s = this.scene;
 
