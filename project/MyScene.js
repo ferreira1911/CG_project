@@ -58,6 +58,13 @@ export class MyScene extends CGFscene {
     this._scattered = false;
 
     this.displayAxis = true;
+    this.displayHUD = true;
+    this.displayWagon = true;
+    this.displayFlora = true;
+    this.displayArrows = true;
+    this.displayRocks = true;
+    this.displayHayBales = true;
+    this.displayGrass = true;
     this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
     // Start 120 units high. Hold for 4 seconds (panorama shot), then drop over 4 seconds.
@@ -294,9 +301,11 @@ export class MyScene extends CGFscene {
         if (!isIntroActive) {
             this.wagon.update(dt, this.interface);
             
-            // Reveal HUD once the intro is over
-            if (this.hudContainerEl && this.hudContainerEl.style.display === 'none') {
+            // Reveal HUD once the intro is over, if the toggle allows it
+            if (this.displayHUD && this.hudContainerEl && this.hudContainerEl.style.display === 'none') {
                 this.hudContainerEl.style.display = 'flex';
+            } else if (!this.displayHUD && this.hudContainerEl && this.hudContainerEl.style.display !== 'none') {
+                this.hudContainerEl.style.display = 'none';
             }
         } else {
             // During the intro, the terrain image might finish loading async.
@@ -426,7 +435,7 @@ export class MyScene extends CGFscene {
     const cz = this.camera.position[2];
 
     // Rocks
-    if (this.rocks.length > 0) {
+    if (this.displayRocks && this.rocks.length > 0) {
       this.setActiveShader(this.rockShader);
       this.rockNoiseMap.bind(2);
       for (const r of this.rocks) {
@@ -440,7 +449,7 @@ export class MyScene extends CGFscene {
     }
 
     // Flora Batch Rendering
-    if (this.floras.length > 0) {
+    if (this.displayFlora && this.floras.length > 0) {
       this.setActiveShader(this.branchShader);
       
       this.branchShader.setUniformsValues({ uLength: 1.0 });
@@ -463,10 +472,10 @@ export class MyScene extends CGFscene {
       this.setActiveShader(this.defaultShader);
     }
 
-    if (this.wagon) this.wagon.display();
+    if (this.displayWagon && this.wagon) this.wagon.display();
 
     // Hay bales — rendered in default shader, with distance culling
-    if (this.haybales) {
+    if (this.displayHayBales && this.haybales) {
       for (const bale of this.haybales) {
         // Skip if the bale is being carried by the wagon (wagon handles its display locally)
         if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) {
@@ -480,7 +489,7 @@ export class MyScene extends CGFscene {
             bale.display();
             
             // If not picked up and on ground, show the guidance arrow
-            if (!bale.isPickedUp && this.arrow) {
+            if (this.displayArrows && !bale.isPickedUp && this.arrow) {
                 this.setActiveShader(this.arrowShader);
                 this.pushMatrix();
                 // Use the bale's built-in calculation for its top-center coordinates
@@ -494,9 +503,11 @@ export class MyScene extends CGFscene {
       this.setActiveShader(this.defaultShader);
     }
 
-    if (this.grass1) this.grass1.display();
-    if (this.grass2) this.grass2.display();
-    if (this.grass3) this.grass3.display();
-    if (this.grass4) this.grass4.display();
+    if (this.displayGrass) {
+        if (this.grass1) this.grass1.display();
+        if (this.grass2) this.grass2.display();
+        if (this.grass3) this.grass3.display();
+        if (this.grass4) this.grass4.display();
+    }
   }
 }

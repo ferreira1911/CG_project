@@ -13,7 +13,17 @@ export class MyInterface extends CGFinterface {
         super.init(application);
 
         this.gui = new dat.GUI();
-        this.gui.add(this.scene, 'displayAxis').name('Display Axis');
+        const visFolder = this.gui.addFolder('Visibility');
+        visFolder.add(this.scene, 'displayAxis').name('Display Axis');
+        visFolder.add(this.scene, 'displayHUD').name('Display HUD');
+        visFolder.add(this.scene, 'displayWagon').name('Display Wagon');
+        visFolder.add(this.scene, 'displayFlora').name('Display Flora');
+        visFolder.add(this.scene, 'displayArrows').name('Display Arrows');
+        visFolder.add(this.scene, 'displayRocks').name('Display Rocks');
+        visFolder.add(this.scene, 'displayHayBales').name('Display Hay Bales');
+        visFolder.add(this.scene, 'displayGrass').name('Display Grass');
+        visFolder.open();
+
         this.gui.add(this.scene, 'freeCamera').name('Free Camera');
 
         this.initKeys();
