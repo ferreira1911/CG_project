@@ -222,19 +222,19 @@ export class MyScene extends CGFscene {
 }
 
   initTextures() {
-    this.panoramaTexture = new CGFtexture(this, './resources/textures/panorama.jpg');
-    this.cloudMap = new CGFtexture(this, './resources/textures/cloudMap.png');
-    this.rockColorMap1 = new CGFtexture(this, './resources/textures/rockTexture1.jpg');
-    this.rockColorMap2 = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
-    this.rockColorMap3 = new CGFtexture(this, './resources/textures/rockTexture3.jpg');
-    this.rockNormalMap1 = new CGFtexture(this, './resources/textures/rockNormals1.jpg');
-    this.rockNormalMap2 = new CGFtexture(this, './resources/textures/rockNormals2.jpg');
-    this.rockNormalMap3 = new CGFtexture(this, './resources/textures/rockNormals3.jpg');
-    this.rockNoiseMap = new CGFtexture(this, './resources/textures/rockNoise1.png');
-    this.grassTexture = new CGFtexture(this, './resources/textures/grass.png');
+    this.panoramaTexture = new CGFtexture(this, './resources/textures/environment/panorama.jpg');
+    this.cloudMap = new CGFtexture(this, './resources/textures/environment/cloudMap.png');
+    this.rockColorMap1 = new CGFtexture(this, './resources/textures/rocks/rockTexture1.jpg');
+    this.rockColorMap2 = new CGFtexture(this, './resources/textures/rocks/rockTexture2.jpg');
+    this.rockColorMap3 = new CGFtexture(this, './resources/textures/rocks/rockTexture3.jpg');
+    this.rockNormalMap1 = new CGFtexture(this, './resources/textures/rocks/rockNormals1.jpg');
+    this.rockNormalMap2 = new CGFtexture(this, './resources/textures/rocks/rockNormals2.jpg');
+    this.rockNormalMap3 = new CGFtexture(this, './resources/textures/rocks/rockNormals3.jpg');
+    this.rockNoiseMap = new CGFtexture(this, './resources/textures/rocks/rockNoise1.png');
+    this.grassTexture = new CGFtexture(this, './resources/textures/environment/grass.png');
     this.horseTexture = new CGFtexture(this, './resources/Horse/Tex_Horse.png');
-    this.barkTexture  = new CGFtexture(this, './resources/textures/rockTexture2.jpg');
-    this.hayTexture   = new CGFtexture(this, './resources/textures/hay.jpg');
+    this.barkTexture  = new CGFtexture(this, './resources/textures/rocks/rockTexture2.jpg');
+    this.hayTexture   = new CGFtexture(this, './resources/textures/wagon/hay.jpg');
   }
 
 

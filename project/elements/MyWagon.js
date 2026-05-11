@@ -42,9 +42,9 @@ export class MyWagon extends CGFobject {
     this.scale = scale;
 
     // ── Textures & sub-objects ───────────────────────────────────────────────
-    this.wheelTexture  = new CGFtexture(scene, './resources/textures/wheel.jpg');
-    this.clothTexture  = new CGFtexture(scene, './resources/textures/cloth.jpg');
-    this.woodenTexture = new CGFtexture(scene, './resources/textures/wood.png');
+    this.wheelTexture  = new CGFtexture(scene, './resources/textures/wagon/wheel.jpg');
+    this.clothTexture  = new CGFtexture(scene, './resources/textures/wagon/cloth.jpg');
+    this.woodenTexture = new CGFtexture(scene, './resources/textures/wagon/wood.png');
 
     this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT, this.woodenTexture);
     this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5, this.clothTexture);
