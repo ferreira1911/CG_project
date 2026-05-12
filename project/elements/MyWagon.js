@@ -253,7 +253,28 @@ export class MyWagon extends CGFobject {
 
     // L — drop the carried bale (drops the most recently picked up one)
     if (lNow && !this._lPressedLast && this.carriedBales.length > 0) {
+        // Pop the bale. Its index in the wagon was `this.carriedBales.length`.
+        const i = this.carriedBales.length - 1;
         const bale = this.carriedBales.pop();
+
+        // Calculate the world coordinates of the bale as it sits in the wagon
+        const offsetMultiplier = (i === 0) ? 0.15 : -0.15;
+        const localX = -8.0 * offsetMultiplier; // BED_LENGTH is 8.0
+        const localZ = -(bale.LENGTH * bale.scale * 0.5) - 0.5;
+
+        const scaledX = localX * this.scale;
+        const scaledZ = localZ * this.scale;
+
+        const cy = Math.cos(this.yaw);
+        const sy = Math.sin(this.yaw);
+
+        const rotX = scaledX * cy + scaledZ * sy;
+        const rotZ = -scaledX * sy + scaledZ * cy;
+
+        // Update the bale's actual world position and orientation
+        bale.x = this.x + rotX;
+        bale.z = this.z + rotZ;
+        bale.yaw = this.yaw;
 
         bale.groundY = this.scene.terrain?.heightAt(bale.x, bale.z) ?? this.y;
         bale.renderY = this.y + this.BALE_CARRY_Y * this.scale;
