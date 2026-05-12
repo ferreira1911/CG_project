@@ -404,8 +404,10 @@ export class MyFlora extends CGFobject {
 
     const shader = this.scene.branchShader;
     this.branchApp.apply();
+    if (!this.branchApp.texture) {
+        this.scene.blankTexture.bind(0);
+    }
     shader.setUniformsValues({
-        uUseTexture: !!this.branchApp.texture,
         uBaseColor: this._branchColor
     });
 
@@ -422,16 +424,20 @@ export class MyFlora extends CGFobject {
 
     if (this.petalMesh) {
         this.petalApp.apply();
+        if (!this.petalApp.texture) {
+            this.scene.blankTexture.bind(0);
+        }
         shader.setUniformsValues({
-            uUseTexture: !!this.petalApp.texture,
             uBaseColor: this._petalColor
         });
         this.petalMesh.display();
     }
     if (this.centerMesh) {
         this.centerApp.apply();
+        if (!this.centerApp.texture) {
+            this.scene.blankTexture.bind(0);
+        }
         shader.setUniformsValues({
-            uUseTexture: !!this.centerApp.texture,
             uBaseColor: this._centerColor
         });
         this.centerMesh.display();

@@ -45,8 +45,9 @@ export class MyWagon extends CGFobject {
     this.wheelTexture  = new CGFtexture(scene, './resources/textures/wagon/wheel.jpg');
     this.clothTexture  = new CGFtexture(scene, './resources/textures/wagon/cloth.jpg');
     this.woodenTexture = new CGFtexture(scene, './resources/textures/wagon/wood.png');
+    this.bedTexture    = new CGFtexture(scene, './resources/textures/wagon/woodBed.jpg');
 
-    this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT, this.woodenTexture);
+    this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT, this.bedTexture);
     this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5, this.clothTexture);
     this.tongue     = new MyWagonTongue(scene, TONGUE_LENGTH, this.woodenTexture);
     this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS, this.wheelTexture);

@@ -235,6 +235,7 @@ export class MyScene extends CGFscene {
     this.horseTexture = new CGFtexture(this, './resources/Horse/Tex_Horse.png');
     this.barkTexture  = new CGFtexture(this, './resources/textures/rocks/rockTexture2.jpg');
     this.hayTexture   = new CGFtexture(this, './resources/textures/wagon/hay.jpg');
+    this.blankTexture = new CGFtexture(this, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
   }
 
 
@@ -401,8 +402,12 @@ export class MyScene extends CGFscene {
     vec4.transformMat4(sunEye, sunWorld, this.camera.getViewMatrix());
     const lp = [sunEye[0], sunEye[1], sunEye[2]];
     
+    // Pre-normalize the light direction on the CPU to save millions of fragment shader calculations
+    const len = Math.sqrt(lp[0]*lp[0] + lp[1]*lp[1] + lp[2]*lp[2]);
+    const ld = [lp[0]/len, lp[1]/len, lp[2]/len];
+    
     this.rockShader.setUniformsValues({ uLightPos: lp });
-    this.branchShader.setUniformsValues({ uLightPos: lp });
+    this.branchShader.setUniformsValues({ uLightDir: ld });
     this.clothShader.setUniformsValues({ uLightPos: lp });
     
     if (this.terrain && this.terrain.terrainShader) {
