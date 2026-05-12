@@ -55,7 +55,8 @@ export class MyWagon extends CGFobject {
 
     // Horse is created at origin; _updateHorsePositions() immediately moves it
     // to the correct world coords so we don't duplicate the formula here.
-    const horseScale = 0.02 * scale;
+    // Reduced the horse scale multiplier so the wagon feels significantly larger than the horse.
+    const horseScale = 0.014 * scale;
     this.horses = [
       new MyHorse(scene, 0, 0, 0, horseScale, 0, horseTexture),
     ];
@@ -299,9 +300,9 @@ export class MyWagon extends CGFobject {
     this.bed.display();
     this.scene.popMatrix();
 
-    // Cover sits on top of the side rails so the canvas wraps over them.
+    // Cover sits on the top horizontal plank of the new side rails (RAIL_HEIGHT * 0.8)
     this.scene.pushMatrix();
-    this.scene.translate(-BED_LENGTH * 0.25, BACK_WHEEL_RADIUS + BED_HEIGHT + RAIL_HEIGHT, 0);
+    this.scene.translate(-BED_LENGTH * 0.25, BACK_WHEEL_RADIUS + BED_HEIGHT + RAIL_HEIGHT * 0.8, 0);
     this.cover.display();
     this.scene.popMatrix();
 
