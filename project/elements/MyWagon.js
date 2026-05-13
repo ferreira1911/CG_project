@@ -42,7 +42,6 @@ export class MyWagon extends CGFobject {
     this.scale = scale;
 
     // ── Textures & sub-objects ───────────────────────────────────────────────
-    this.wheelTexture  = new CGFtexture(scene, './resources/textures/wagon/wheel.jpg');
     this.clothTexture  = new CGFtexture(scene, './resources/textures/wagon/cloth.jpg');
     this.woodenTexture = new CGFtexture(scene, './resources/textures/wagon/wood.png');
     this.bedTexture    = new CGFtexture(scene, './resources/textures/wagon/woodBed.jpg');
@@ -50,8 +49,9 @@ export class MyWagon extends CGFobject {
     this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT, this.bedTexture);
     this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5, this.clothTexture);
     this.tongue     = new MyWagonTongue(scene, TONGUE_LENGTH, this.woodenTexture);
-    this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS, this.wheelTexture);
-    this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS, this.wheelTexture);
+    // Wheels are baked geometry (rim + hub + spokes), textured with wood.
+    this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS, this.woodenTexture);
+    this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS, this.woodenTexture);
 
     // Horse is created at origin; _updateHorsePositions() immediately moves it
     // to the correct world coords so we don't duplicate the formula here.
@@ -216,8 +216,11 @@ export class MyWagon extends CGFobject {
     // ── Wheel spin (Physics/Kinematic) ─────────────────────────────────────────
     // dist is in world units; convert to local (pre-scale) before dividing by radius.
     const localDist = dist / this.scale;
-    this.frontWheel.spinAngle += localDist / FRONT_WHEEL_RADIUS;
-    this.backWheel.spinAngle  += localDist / BACK_WHEEL_RADIUS;
+    // Negative: rotate(+θ, 0,0,1) sends the wheel's top toward -x. For forward
+    // rolling we need the top moving +x, so the spin angle decreases as the
+    // wagon advances.
+    this.frontWheel.spinAngle -= localDist / FRONT_WHEEL_RADIUS;
+    this.backWheel.spinAngle  -= localDist / BACK_WHEEL_RADIUS;
 
     // ── Horse follow ──────────────────────────────────────────────────────────
     this._updateHorsePositions();

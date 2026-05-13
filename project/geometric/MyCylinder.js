@@ -1,18 +1,17 @@
-import {CGFobject} from '../../lib/CGF.js';
+import { CGFobject } from '../../lib/CGF.js';
 /**
  * MyCylinder
  * @constructor
  * @param scene - Reference to MyScene object
  */
 export class MyCylinder extends CGFobject {
-    constructor(scene, slices, stacks)
-    {
-        super(scene);      
-        this.slices = slices;      
+    constructor(scene, slices, stacks) {
+        super(scene);
+        this.slices = slices;
         this.stacks = stacks;
         this.initBuffers();
     }
-    
+
     initBuffers() {
         this.vertices = [];
         this.indices = [];
@@ -20,9 +19,9 @@ export class MyCylinder extends CGFobject {
         this.texCoords = [];
 
         var ang = 0;
-        var alphaAng = 2*Math.PI/this.slices;
+        var alphaAng = 2 * Math.PI / this.slices;
         var stackHeight = 1.0 / this.stacks;
-        let index =0;
+        let index = 0;
 
         // Generate vertices and normals
         for (var s = 0; s <= this.stacks; s++) {
@@ -34,8 +33,8 @@ export class MyCylinder extends CGFobject {
                 var z = Math.sin(ang); // <-- Z completes the circular base
 
                 this.vertices.push(x, y, z);
-                
-                this.normals.push(x, 0, z); 
+
+                this.normals.push(x, 0, z);
 
                 this.texCoords.push(i / this.slices, 1 - y);
 
@@ -46,8 +45,8 @@ export class MyCylinder extends CGFobject {
         // Generate indices
         for (var s = 0; s < this.stacks; s++) {
             for (var i = 0; i < this.slices; i++) {
-                
-                var current = (s * (this.slices + 1)) + i; 
+
+                var current = (s * (this.slices + 1)) + i;
                 var next = current + 1;
                 var top = current + (this.slices + 1);
                 var topNext = top + 1;
