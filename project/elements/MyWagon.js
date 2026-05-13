@@ -262,8 +262,9 @@ export class MyWagon extends CGFobject {
 
         // Calculate the world coordinates of the bale as it sits in the wagon
         const offsetMultiplier = (i === 0) ? 0.15 : -0.15;
-        const localX = -8.0 * offsetMultiplier; // BED_LENGTH is 8.0
-        const localZ = -(bale.LENGTH * bale.scale * 0.5) - 0.5;
+        const localX = -BED_LENGTH * offsetMultiplier;
+        // Bale is now centred at the anchor — drop coords match carry coords.
+        const localZ = -0.5;
 
         const scaledX = localX * this.scale;
         const scaledZ = localZ * this.scale;
@@ -330,60 +331,20 @@ export class MyWagon extends CGFobject {
     this.cover.display();
     this.scene.popMatrix();
 
-    // Render carried hay bales in local wagon space
+    // Render carried hay bales in wagon-local space using the bale's baked mesh.
     for (let i = 0; i < this.carriedBales.length; i++) {
         const bale = this.carriedBales[i];
         const offsetMultiplier = (i === 0) ? 0.15 : -0.15;
         const localX = -BED_LENGTH * offsetMultiplier;
-        
+        // Bale geometry is centred at origin with long axis along +X. Rotate
+        // -π/2 around +Y to lay it across the bed (long axis → wagon +Z), and
+        // lift by RADIUS*scale so the cylinder side rests on the bed floor.
         this.scene.pushMatrix();
-        // localX is forward/back. BALE_CARRY_Y is height.
-        // We add a Z offset to center the bale (it's LENGTH long) and move it left.
-        // Since bale grows towards +Z (right), we shift it by -LENGTH and a bit more for "left".
-        const localZ = -(bale.LENGTH * bale.scale * 0.5) - 0.5; 
-        this.scene.translate(localX, this.BALE_CARRY_Y, localZ);
-        // We need a version of bale.display that doesn't use world coords, 
-        // or we just manually replicate its drawing logic here.
-        // Actually, let's just use the bale's internal geometry.
-        
-        // Disable culling for the bale
-        this.scene.gl.disable(this.scene.gl.CULL_FACE);
-        
-        this.scene.pushMatrix();
-        // Shift up by radius so the cylinder side sits on the floor
-        this.scene.translate(0, bale.RADIUS * bale.scale, 0);
-        // Local orientation: perpendicular to wagon axis (lying along Z)
-        this.scene.rotate(Math.PI / 2, 1, 0, 0);
-        
-        bale.mat.apply();
-        
-        // Body
-        this.scene.pushMatrix();
-        // The cylinder grows along its local Y. 
-        // Our X-rotation (line 330) made local Y align with wagon-local Z.
-        this.scene.scale(bale.RADIUS * bale.scale, bale.LENGTH * bale.scale, bale.RADIUS * bale.scale);
-        bale.body.display();
+        this.scene.translate(localX, this.BALE_CARRY_Y + bale.RADIUS * bale.scale, -0.5);
+        this.scene.rotate(-Math.PI / 2, 0, 1, 0);
+        this.scene.scale(bale.scale, bale.scale, bale.scale);
+        bale.drawMesh();
         this.scene.popMatrix();
-
-        // Caps
-        // Top cap
-        this.scene.pushMatrix();
-        this.scene.translate(0, bale.LENGTH * bale.scale, 0);
-        this.scene.rotate(-Math.PI / 2, 1, 0, 0);
-        this.scene.scale(bale.RADIUS * bale.scale, bale.RADIUS * bale.scale, 1);
-        bale.cap.display();
-        this.scene.popMatrix();
-
-        // Bottom cap
-        this.scene.pushMatrix();
-        this.scene.rotate(Math.PI / 2, 1, 0, 0);
-        this.scene.scale(bale.RADIUS * bale.scale, bale.RADIUS * bale.scale, 1);
-        bale.cap.display();
-        this.scene.popMatrix();
-
-        this.scene.popMatrix(); // Orientation
-        this.scene.gl.enable(this.scene.gl.CULL_FACE);
-        this.scene.popMatrix(); // Translation
     }
 
     // Tongue tucked under the bed front so it visually attaches to the wagon.

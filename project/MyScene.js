@@ -479,33 +479,45 @@ export class MyScene extends CGFscene {
 
     if (this.displayWagon && this.wagon) this.wagon.display();
 
-    // Hay bales — rendered in default shader, with distance culling
+    // Hay bales — two batched passes so we switch shaders twice for the whole
+    // bale set instead of twice per bale. Shader switching is one of the most
+    // expensive GL ops on integrated GPUs (program rebind + pipeline flush).
     if (this.displayHayBales && this.haybales) {
+      // Collect bales visible this frame so we only iterate twice over the
+      // same filtered set, rather than recomputing the same predicates.
+      const visibleBales = [];
       for (const bale of this.haybales) {
-        // Skip if the bale is being carried by the wagon (wagon handles its display locally)
         if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) {
           if (this.wagon?.carriedBales.includes(bale)) continue;
         }
-        
         const dx = bale.x - cx;
         const dz = bale.z - cz;
-        if (dx * dx + dz * dz < DRAW_DIST_SQ) {
-            this.setActiveShader(this.defaultShader);
-            bale.display();
-            
-            // If not picked up and on ground, show the guidance arrow
-            if (this.displayArrows && !bale.isPickedUp && this.arrow) {
-                this.setActiveShader(this.arrowShader);
-                this.pushMatrix();
-                // Use the bale's built-in calculation for its top-center coordinates
-                const [cx, cy, cz] = bale.getTopCenter();
-                this.translate(cx, cy, cz);
-                this.arrow.display();
-                this.popMatrix();
-            }
-        }
+        if (dx * dx + dz * dz < DRAW_DIST_SQ) visibleBales.push(bale);
       }
-      this.setActiveShader(this.defaultShader);
+
+      // Pass 1: bale meshes under the default shader.
+      if (visibleBales.length > 0) {
+        this.setActiveShader(this.defaultShader);
+        for (const bale of visibleBales) bale.display();
+      }
+
+      // Pass 2: guidance arrows under the arrow shader.
+      if (this.displayArrows && this.arrow) {
+        let arrowShaderActive = false;
+        for (const bale of visibleBales) {
+          if (bale.isPickedUp) continue;
+          if (!arrowShaderActive) {
+            this.setActiveShader(this.arrowShader);
+            arrowShaderActive = true;
+          }
+          this.pushMatrix();
+          const [ax, ay, az] = bale.getTopCenter();
+          this.translate(ax, ay, az);
+          this.arrow.display();
+          this.popMatrix();
+        }
+        if (arrowShaderActive) this.setActiveShader(this.defaultShader);
+      }
     }
 
     if (this.displayGrass) {

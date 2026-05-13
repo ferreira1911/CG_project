@@ -79,14 +79,20 @@ export class MyWagonWheel extends CGFobject {
         this.texCoords.push(s / SLICES, (z + t / 2) / t);
       }
     }
-    // Two verts per slice (low z, high z). Wind so the outward face is front.
+    // Two verts per slice (low z, high z). Wind so the outward face is front,
+    // then emit the reversed pair too so the rim is visible from inside
+    // (looking out through the open end of the wheel).
     for (let s = 0; s < SLICES; s++) {
       const bl = base + s * 2;
       const tl = base + s * 2 + 1;
       const br = base + s * 2 + 2;
       const tr = base + s * 2 + 3;
+      // Outward-facing (CCW from outside).
       this.indices.push(bl, br, tl);
       this.indices.push(tl, br, tr);
+      // Inward-facing (CCW from inside) — makes the cylinder double-sided.
+      this.indices.push(bl, tl, br);
+      this.indices.push(tl, tr, br);
     }
   }
 
