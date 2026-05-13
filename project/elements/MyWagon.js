@@ -385,7 +385,7 @@ export class MyWagon extends CGFobject {
 
     // Tongue tucked under the bed front so it visually attaches to the wagon.
     this.scene.pushMatrix();
-    this.scene.translate(BED_LENGTH * 0.5, BACK_WHEEL_RADIUS, 0);
+    this.scene.translate(BED_LENGTH * 0.5, BACK_WHEEL_RADIUS + BED_HEIGHT * 0.4, 0);
     this.tongue.display();
     this.scene.popMatrix();
 

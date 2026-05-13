@@ -30,5 +30,12 @@ export class MyWagonTongue extends CGFobject {
     this.scene.scale(L, THICKNESS, THICKNESS);
     this.scene.cube.display();
     this.scene.popMatrix();
+
+    // Whippletree (Harness Crossbar) at the tip of the tongue
+    this.scene.pushMatrix();
+    this.scene.translate(L - 0.2, 0, 0); // At the very front
+    this.scene.scale(0.1, 0.1, 1.8);    // Wide crossbar
+    this.scene.cube.display();
+    this.scene.popMatrix();
   }
 }

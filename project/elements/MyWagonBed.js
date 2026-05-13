@@ -37,16 +37,24 @@ export class MyWagonBed extends CGFobject {
     cube.display();
     this.scene.popMatrix();
 
-    // Structural Side Rails
+    // ── SIDE RAILS ──
     const postW = 0.2, postH = railH, postD = RAIL_THICKNESS;
-    // 4 posts along the length
-    const postXs = [-L/2 + postW/2, -L/6, L/6, L/2 - postW/2];
     
     for (const sign of [1, -1]) {
       const zOffset = sign * (W / 2 - postD / 2);
       
-      // Vertical Posts
-      for (const px of postXs) {
+      // 1. Back Half (Solid Wall)
+      // Spans from x = -L/2 to x = 0
+      this.scene.pushMatrix();
+      this.scene.translate(-L/4, H / 2 + railH / 2, zOffset);
+      this.scene.scale(L/2, railH, postD);
+      cube.display();
+      this.scene.popMatrix();
+
+      // 2. Front Half (Planked Rails)
+      // Spans from x = 0 to x = L/2
+      const frontPostXs = [postW/2, L/4, L/2 - postW/2];
+      for (const px of frontPostXs) {
         this.scene.pushMatrix();
         this.scene.translate(px, H / 2 + postH / 2, zOffset);
         this.scene.scale(postW, postH, postD);
@@ -54,31 +62,20 @@ export class MyWagonBed extends CGFobject {
         this.scene.popMatrix();
       }
       
-      // Horizontal Planks (3 per side)
+      // Horizontal Planks for front half
       const plankH = 0.2;
       const plankYs = [H / 2 + railH * 0.2, H / 2 + railH * 0.5, H / 2 + railH * 0.8];
       for (const py of plankYs) {
         this.scene.pushMatrix();
         // Shift slightly outwards to sit flush against the posts
-        this.scene.translate(0, py, zOffset + sign * (postD / 2 + 0.02));
-        this.scene.scale(L, plankH, 0.04);
+        this.scene.translate(L/4, py, zOffset + sign * (postD / 2 + 0.02));
+        this.scene.scale(L/2, plankH, 0.04);
         cube.display();
         this.scene.popMatrix();
       }
     }
 
-    // Rear Tailgate
-    const tgX = -L/2 + 0.05;
-    const tgYs = [H/2 + railH * 0.25, H/2 + railH * 0.65];
-    for (const py of tgYs) {
-      this.scene.pushMatrix();
-      this.scene.translate(tgX, py, 0);
-      this.scene.scale(0.1, 0.3, W - RAIL_THICKNESS * 2);
-      cube.display();
-      this.scene.popMatrix();
-    }
-
-    // Front Driver's Area
+    // ── FRONT DRIVER'S AREA ──
     // 1. Bench Seat
     this.scene.pushMatrix();
     this.scene.translate(L/2 - 1.0, H/2 + 0.6, 0);
@@ -98,6 +95,31 @@ export class MyWagonBed extends CGFobject {
     this.scene.pushMatrix();
     this.scene.translate(L/2 - 0.3, H/2 + 0.1, 0);
     this.scene.scale(0.8, 0.05, W - 0.4);
+    cube.display();
+    this.scene.popMatrix();
+
+    // 4. Brake Lever
+    this.scene.pushMatrix();
+    // Positioned on the right side of the driver
+    this.scene.translate(L/2 - 0.9, H/2 + 0.5, -W/2 + 0.2);
+    this.scene.rotate(-Math.PI / 6, 0, 0, 1); // Angle it backwards
+    this.scene.scale(0.08, 1.2, 0.08);
+    cube.display();
+    this.scene.popMatrix();
+
+    // 5. Side Step
+    // Vertical supports hanging down from the left side
+    for(const dx of [-0.3, 0.3]) {
+        this.scene.pushMatrix();
+        this.scene.translate(L/4 + dx, H/2 - 0.3, W/2 + 0.02);
+        this.scene.scale(0.05, 0.6, 0.05);
+        cube.display();
+        this.scene.popMatrix();
+    }
+    // Horizontal step board
+    this.scene.pushMatrix();
+    this.scene.translate(L/4, H/2 - 0.5, W/2 + 0.1);
+    this.scene.scale(0.8, 0.05, 0.2);
     cube.display();
     this.scene.popMatrix();
   }
