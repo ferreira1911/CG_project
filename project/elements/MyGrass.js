@@ -38,6 +38,9 @@ export class MyGrass extends CGFobject {
       if (x * x + z * z > 198 * 198) continue;
       if (!terrain.isPathClearFast(x, z)) continue;
       
+      // Custom block: skip if overlapping with rocks, hay bales, or flower groups
+      if (scene.isGrassSpawnBlocked && scene.isGrassSpawnBlocked(x, z)) continue;
+      
       // Calculate dryness using procedural organic noise (3 octaves to break circular patterns)
       const nx1 = x * 0.04, nz1 = z * 0.04;
       const nx2 = x * 0.09, nz2 = z * 0.07;

@@ -34,7 +34,16 @@ export class MyInterface extends CGFinterface {
         grassFolder.add(this.scene, 'windFreq', 0.1, 5.0, 0.1).name('Wind Frequency');
         grassFolder.open();
 
-        // 4. Debug Tools
+        // 4. World & Flora Generator (Live Regeneration)
+        const genFolder = this.gui.addFolder('World Generator');
+        genFolder.add(this.scene, 'numRocks', 0, 100, 1).name('Num Rocks');
+        genFolder.add(this.scene, 'numHaybales', 0, 15, 1).name('Num Haybales');
+        genFolder.add(this.scene, 'numFlowers', 10, 300, 5).name('Total Flowers');
+        genFolder.add(this.scene, 'numFlowerClusters', 1, 20, 1).name('Flora Groups');
+        genFolder.add(this.scene, 'flowerClusterRadius', 1.5, 12.0, 0.1).name('Group Radius');
+        genFolder.add(this.scene, 'scatter').name('Regenerate World');
+
+        // 5. Debug Tools
         const debugFolder = this.gui.addFolder('Tools & Debug');
         debugFolder.add(this.scene, 'displayAxis').name('Display Axis');
         debugFolder.add(this.scene, 'displayHUD').name('Display HUD (HP)');
