@@ -1,11 +1,9 @@
 import { CGFobject } from '../../lib/CGF.js';
-import { MySphere } from '../geometric/MySphere.js';
 
 export class MyRock extends CGFobject {
     constructor(scene, x, y, z, sx, sy, sz, rotY, seed, deform,
                 bigFreq, detailFreq, detailWeight, topBias, colorTex, normalTex) {
         super(scene);
-        this.sphere = new MySphere(scene, 0.5, 16, 8, false, 1, 0);
         this.x = x;
         this.y = y;
         this.z = z;
@@ -40,7 +38,7 @@ export class MyRock extends CGFobject {
         this.scene.translate(this.x, this.y, this.z);
         this.scene.rotate(this.rotY, 0, 1, 0);
         this.scene.scale(this.sx, this.sy, this.sz);
-        this.sphere.display();
+        this.scene.rockSphere.display();
         this.scene.popMatrix();
     }
 }

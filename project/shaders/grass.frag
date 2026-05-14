@@ -2,26 +2,34 @@
 precision highp float;
 #endif
 
-uniform sampler2D uSampler;
+varying float vLocalY;
+varying vec4 vGrassInfo;
+varying vec3 vNormal;
 
-varying vec2 vTextureCoord;
-varying float vTipness;
+uniform float uBladeHeight;
 
 void main() {
-    vec4 c = texture2D(uSampler, vTextureCoord);
+    float t = clamp(vLocalY / uBladeHeight, 0.0, 1.0);
+    
+    float dryness = vGrassInfo.w;
+    
+    // High-end optimization: Pre-interpolate raw colors by dryness FIRST, saving 
+    // multiple expensive smoothstep steps per pixel (Distributive property)
+    vec3 rootFinal = mix(vec3(0.06, 0.15, 0.03), vec3(0.20, 0.18, 0.05), dryness);
+    vec3 bodyFinal = mix(vec3(0.15, 0.35, 0.08), vec3(0.40, 0.35, 0.08), dryness);
+    vec3 tipFinal  = mix(vec3(0.22, 0.50, 0.12), vec3(0.60, 0.55, 0.15), dryness);
+    
+    vec3 color = mix(rootFinal, bodyFinal, smoothstep(0.0, 0.4, t));
+    color = mix(color, tipFinal, smoothstep(0.4, 1.0, t));
+    
+    // Add subtle variation per blade
+    color += vec3(vGrassInfo.x * 0.05, vGrassInfo.x * 0.07, vGrassInfo.x * 0.02);
 
-    // Alpha test — discard transparent fragments instead of blending,
-    // so order-independence is automatic and depth writes remain correct.
-    if (c.a < 0.5) discard;
-
-    // Pull the saturation down a touch — texture grass tends to be too vivid.
-    float luma = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-    c.rgb = mix(vec3(luma), c.rgb, 0.65);
-
-    // Tint warmer toward the root (drier base, greener tip) and darken slightly.
-    vec3 rootTint = vec3(0.55, 0.50, 0.30);
-    c.rgb = mix(c.rgb * rootTint, c.rgb, vTipness);
-    c.rgb *= mix(0.7, 0.82, vTipness);
-
-    gl_FragColor = c;
+    // Robust lighting: Normalize interpolated normal vector on-the-fly
+    vec3 lightDir = normalize(vec3(0.5, 0.8, 0.3));
+    float diffuse = max(dot(normalize(vNormal), lightDir), 0.3);
+    
+    float ambient = 0.45; // Balanced ambient
+    
+    gl_FragColor = vec4(color * (diffuse + ambient), 1.0);
 }

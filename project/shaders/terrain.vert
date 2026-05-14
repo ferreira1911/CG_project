@@ -15,6 +15,7 @@ uniform float uTerrainHeight;
 
 varying vec2 vTextureCoord;
 varying vec3 vNormal;
+varying vec2 vWorldXZ;
 
 float sampleHeight(vec2 uv) {
     vec2 clampedUV = clamp(uv, vec2(0.0), vec2(1.0));
@@ -23,6 +24,7 @@ float sampleHeight(vec2 uv) {
 
 void main() {
     vTextureCoord = aTextureCoord;
+    vWorldXZ = aVertexPosition.xz * 300.0;
 
     // Displace vertices in Y using the heightmap red channel.
     vec4 heightMapColor = texture2D(uSampler2, aTextureCoord);

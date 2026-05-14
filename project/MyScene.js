@@ -9,6 +9,7 @@ import { MyCameraAnimator } from "./animators/MyCameraAnimator.js";
 import { MyUnitCube } from "./geometric/MyUnitCube.js";
 import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
+import { MySphere } from "./geometric/MySphere.js";
 import { MyHayBale } from "./elements/MyHayBale.js";
 import { MyArrow } from "./elements/MyArrow.js";
 import { r, pickSpot } from "./utils.js";
@@ -55,16 +56,35 @@ export class MyScene extends CGFscene {
     this.rocks    = [];
     this.floras   = [];
     this.haybales = [];
+    this.flowerClusters = [];
     this._scattered = false;
 
-    this.displayAxis = true;
-    this.displayHUD = true;
+    this.displayAxis = false;
+    this.displayHUD = false;
     this.displayWagon = true;
     this.displayFlora = true;
     this.displayArrows = true;
     this.displayRocks = true;
     this.displayHayBales = true;
     this.displayGrass = true;
+    this.displaySky = true;
+    this.displayTerrain = true;
+
+    // Generation Parameters (Exposed to GUI)
+    this.numRocks = 20;
+    this.numHaybales = 3;
+    
+    // Flora Geometry Parameters
+    this.numFlowers = 180;
+    this.numFlowerClusters = 6;
+    this.flowerClusterRadius = 3.8;
+    this.flowerStemLength = 0.8;
+    this.flowerPetals = 4;
+    this.flowerPetalSize = 2.2;
+    
+    this.windAmp = 0.2;
+    this.windFreq = 1.4;
+
     this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
     // Start 120 units high. Hold for 4 seconds (panorama shot), then drop over 4 seconds.
@@ -82,15 +102,21 @@ export class MyScene extends CGFscene {
   }
 
   scatter() {
+    // 1. Reset arrays for safe real-time regeneration
+    this.rocks = [];
+    this.floras = [];
+    this.haybales = [];
+    this.flowerClusters = [];
+    this.grassPatches = [];
+
     const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
     this.wagon = new MyWagon(this, wx, wy, wz, r(0, Math.PI * 2), 1.0, this.horseTexture);
 
-    // Color and normal arrays must stay aligned: index N = matching color+normal pair.
+    // 2. Rocks: baked displaced geometry
     const rockTextures = [this.rockColorMap1, this.rockColorMap2, this.rockColorMap3];
     const rockNormals  = [this.rockNormalMap1, this.rockNormalMap2, this.rockNormalMap3];
 
-    // Rocks: smashed-disc shape — wide & flat with strong vertex perturbations.
-    for (let i = 0; i < ROCK_COUNT; i++) {
+    for (let i = 0; i < this.numRocks; i++) {
       const baseXZ = r(1.4, 3.2);
       const elong  = r(1.0, 1.6);
       let sx = baseXZ;
@@ -105,26 +131,22 @@ export class MyScene extends CGFscene {
         z = r(-100, 100);
       } while (!this.terrain.isPathClear(x, z, clearance));
       y = this.terrain.heightAt(x, z);
+      
       const matIdx = Math.floor(r(0, rockTextures.length));
-      const tex    = rockTextures[matIdx];
-      const normal = rockNormals[matIdx];
       this.rocks.push(new MyRock(
-        this,
-        x, y, z,
-        sx, sy, sz,
-        r(0, Math.PI * 2),  // rotY — break Z-aligned elongation
-        r(0, 100),          // seed
-        r(0.55, 0.85),      // deform
-        r(0.7, 1.6),        // bigFreq — bulky vs lumpy low-freq scale
-        r(2.0, 5.0),        // detailFreq — fine cracks vs broad chunks
-        r(0.5, 1.3),        // detailWeight — how carved vs how puffy
-        r(-0.5, 0.6),       // topBias — <0 slab/flat-top, >0 peaked/pointy
-        tex,
-        normal
+        this, x, y, z, sx, sy, sz,
+        r(0, Math.PI * 2), r(0, 100), r(0.55, 0.85),
+        r(0.7, 1.6), r(2.0, 5.0), r(0.5, 1.3), r(-0.5, 0.6),
+        rockTextures[matIdx], rockNormals[matIdx]
       ));
     }
 
-    // 5 flowers — depth 3, short, with petals
+    // 3. Hay Bales (Instantiate before Grass so grass can detect their presence!)
+    for (let i = 0; i < this.numHaybales; i++) {
+      this.spawnHayBale();
+    }
+
+    // 4. Grouped Flowers (Clusters)
     const FLOWER_COLORS = [
       [0.2, 0.4, 0.9], // Blue
       [0.9, 0.2, 0.2], // Red
@@ -133,43 +155,112 @@ export class MyScene extends CGFscene {
       [0.6, 0.2, 0.8]  // Purple
     ];
 
-    for (let i = 0; i < FLOWER_COUNT; i++) {
-      const scale = r(0.35, 0.75);
-      const clearance = scale * 1.0;
-      let x, y, z;
+    const flowersPerCluster = Math.max(2, Math.floor(this.numFlowers / this.numFlowerClusters));
+
+    for (let c = 0; c < this.numFlowerClusters; c++) {
+      let cx, cz;
       do {
-        x = r(-80, 80);
-        z = r(-80, 80);
-      } while (!this.terrain.isPathClear(x, z, clearance));
-      y = this.terrain.heightAt(x, z);
+        cx = r(-90, 90);
+        cz = r(-90, 90);
+      } while (!this.terrain.isPathClear(cx, cz, this.flowerClusterRadius));
 
-      
-      const color = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
-      
-      this.floras.push(new MyFlora(
-        this,
-        x, y, z,
-        scale,
-        3, 30, 0.7, 0.5,
-        0.05, 0.6, 15,
-        r(6, 10) | 0,
-        1.2, 35, 0.3,
-        null, null,
-        r(0, 100),
-        false,
-        color
-      ));
+      // Assign ONE specific color to this entire cluster to represent a uniform floral patch!
+      const clusterColor = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
+
+      // Register center & radius of the floral cluster so Grass avoids this area
+      this.flowerClusters.push({
+          x: cx,
+          z: cz,
+          radius: this.flowerClusterRadius
+      });
+
+      for (let f = 0; f < flowersPerCluster; f++) {
+         // Slightly wider dispersion (0.85) for seamless transition at the grass boundary
+         const angle = r(0, Math.PI * 2);
+         const dist = Math.sqrt(Math.random()) * (this.flowerClusterRadius * 0.85);
+         const fx = cx + Math.cos(angle) * dist;
+         const fz = cz + Math.sin(angle) * dist;
+
+         if (!this.terrain.isPathClear(fx, fz, 0.5)) continue;
+         
+         const fy = this.terrain.heightAt(fx, fz);
+         // Lowered scale and trunkLength slightly so flowers sit just at or slightly below the grass line (1.1 - 1.3)
+         const scale = r(0.45, 0.8);
+         
+         this.floras.push(new MyFlora(
+            this, fx, fy, fz, scale,
+            3, 30, this.flowerStemLength, 0.55, 0.05, 0.6, 15,
+            this.flowerPetals | 0, this.flowerPetalSize, 35, 0.3,
+            null, null, r(0, 100), false, clusterColor
+         ));
+      }
     }
 
+    // 5. Grass Shader setup
+    this.grassShader = new CGFshader(this.gl, 'shaders/grass.vert', 'shaders/grass.frag');
+    this.grassShader.setUniformsValues({
+      uTime:     0,
+      uWindAmp:  this.windAmp,
+      uWindFreq: this.windFreq,
+      uBladeHeight: 1.3 * 1.3
+    });
 
-    this.grass1 = new MyGrass(this, this.grassTexture, this.terrain);
-    this.grass2 = new MyGrass(this, this.grassTexture, this.terrain);
-    this.grass3 = new MyGrass(this, this.grassTexture, this.terrain);
+    // 6. Generate Grass Patches
+    const gridSize = 9;
+    const mapSize = 300;
+    const halfMap = mapSize / 2;
+    const step = mapSize / gridSize;
 
-    // Hay bales: scatter around the terrain avoiding the path
-    for (let i = 0; i < HAYBALE_COUNT; i++) {
-      this.spawnHayBale();
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+            const cx = -halfMap + step / 2 + i * step;
+            const cz = -halfMap + step / 2 + j * step;
+            if (cx * cx + cz * cz > halfMap * halfMap) continue; 
+            
+            // MyGrass constructor automatically calls isGrassSpawnBlocked(x, z)!
+            const patch = new MyGrass(this, this.grassShader, this.terrain, cx, cz, step);
+            this.grassPatches.push(patch);
+        }
     }
+  }
+
+  /**
+   * Helper called by MyGrass constructor to ensure grass is not spawned 
+   * inside rocks, haybales, or floral cluster zones.
+   */
+  isGrassSpawnBlocked(x, z) {
+    // Check intersection with Rocks
+    for (let i = 0; i < this.rocks.length; i++) {
+        const rock = this.rocks[i];
+        const dx = x - rock.x;
+        const dz = z - rock.z;
+        const radius = Math.max(rock.sx, rock.sz) * 0.85; 
+        if (dx * dx + dz * dz < radius * radius) return true;
+    }
+    
+    // Check intersection with Hay Bales
+    for (let i = 0; i < this.haybales.length; i++) {
+        const hb = this.haybales[i];
+        const dx = x - hb.x;
+        const dz = z - hb.z;
+        const radius = (hb.scale || 1.0) * 1.75; 
+        if (dx * dx + dz * dz < radius * radius) return true;
+    }
+
+    // Check intersection with Flower Grouping Zones
+    if (this.flowerClusters) {
+        for (let i = 0; i < this.flowerClusters.length; i++) {
+            const cluster = this.flowerClusters[i];
+            const dx = x - cluster.x;
+            const dz = z - cluster.z;
+            // Shrink the exclusion zone multiplier slightly (0.82) to allow the 
+            // grass to overlap with the outermost flowers for a seamless transition.
+            const exclusionRadius = cluster.radius * 0.82;
+            if (dx * dx + dz * dz < exclusionRadius * exclusionRadius) return true;
+        }
+    }
+    
+    return false;
   }
 
   /**
@@ -247,6 +338,7 @@ export class MyScene extends CGFscene {
     this.cube     = new MyUnitCube(this);
     this.cylinder = new MyCylinder(this, 24, 1);
     this.circle   = new MyCircle(this, 24);
+    this.rockSphere = new MySphere(this, 0.5, 16, 8, false, 1, 0);
   }
 
   initShaders() {
@@ -291,10 +383,14 @@ export class MyScene extends CGFscene {
 
     this.panoramaShader.setUniformsValues({ time: this.time });
     this.clothShader.setUniformsValues({ time: this.time });
-    if (this.grass1) this.grass1.setTime(this.time);
-    if (this.grass2) this.grass2.setTime(this.time);
-    if (this.grass3) this.grass3.setTime(this.time);
-    if (this.grass4) this.grass4.setTime(this.time);
+    
+    if (this.grassShader) {
+        this.grassShader.setUniformsValues({ 
+            uTime: this.time,
+            uWindAmp: this.windAmp,
+            uWindFreq: this.windFreq
+        });
+    }
     
     if (this.arrowShader) {
         this.arrowShader.setUniformsValues({ uTime: this.time });
@@ -425,12 +521,16 @@ export class MyScene extends CGFscene {
     this.setDefaultAppearance();
 
     // Sky
-    this.setActiveShader(this.panoramaShader);
-    this.panoramaTexture.bind(0);
-    this.panorama.display();
-    this.setActiveShader(this.defaultShader);
+    if (this.displaySky) {
+        this.setActiveShader(this.panoramaShader);
+        this.panoramaTexture.bind(0);
+        this.panorama.display();
+        this.setActiveShader(this.defaultShader);
+    }
 
-    this.terrain.display();
+    if (this.displayTerrain) {
+        this.terrain.display();
+    }
 
     if (!this._scattered && this.terrain.ready) {
       this.scatter();
@@ -439,7 +539,7 @@ export class MyScene extends CGFscene {
 
     // ── Distance Culling (Draw Distance) ──────────────────────────────────
     // Only draw objects within a certain radius of the camera to save GPU cycles
-    const DRAW_DIST_SQ = 160 * 160; // 160 units draw distance
+    const DRAW_DIST_SQ = 135 * 135; // 135 units draw distance
     const cx = this.camera.position[0];
     const cz = this.camera.position[2];
 
@@ -524,11 +624,16 @@ export class MyScene extends CGFscene {
       }
     }
 
-    if (this.displayGrass) {
-        if (this.grass1) this.grass1.display();
-        if (this.grass2) this.grass2.display();
-        if (this.grass3) this.grass3.display();
-        if (this.grass4) this.grass4.display();
+    if (this.displayGrass && this.grassPatches && this.grassPatches.length > 0) {
+        this.setActiveShader(this.grassShader);
+        this.gl.disable(this.gl.CULL_FACE);
+        
+        for (const patch of this.grassPatches) {
+            patch.displayShared();
+        }
+        
+        this.gl.enable(this.gl.CULL_FACE);
+        this.setActiveShader(this.defaultShader);
     }
   }
 }

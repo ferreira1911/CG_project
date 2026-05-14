@@ -9,7 +9,7 @@ export class MyTerrain extends CGFobject {
         this.plane = new MyPlane(scene, 150);
 
         // World extent of the terrain (matches the scale() in display())
-        this.terrainSize = 400;
+        this.terrainSize = 300;
         // Must match `heightMapColor.r * 100.0` in terrain.vert
         this.maxHeight = 20.0;
 
@@ -101,35 +101,33 @@ export class MyTerrain extends CGFobject {
 
     // Probabilistic grass placement so the transition around the path fades out
     // instead of cutting off sharply.
-    isPathClear(worldX, worldZ, radius) {
-        const sampleRadius = Math.max(radius, 1.0);
-        const diag = sampleRadius * 0.70710678;
-        const offsets = [
-            [0, 0],
-            [sampleRadius, 0],
-            [-sampleRadius, 0],
-            [0, sampleRadius],
-            [0, -sampleRadius],
-            [diag, diag],
-            [diag, -diag],
-            [-diag, diag],
-            [-diag, -diag],
-        ];
+    isPathClear(worldX, worldZ, radius = 1.0) {
+        if (!this.ready) return true;
 
-        let maskVal = 0;
-        for (const [dx, dz] of offsets) {
-            maskVal = Math.max(maskVal, this._sampleR(this._maskData, this._maskW, this._maskH, worldX + dx, worldZ + dz));
+        const numSamples = 8;
+        for (let i = 0; i < numSamples; i++) {
+            const angle = (i / numSamples) * Math.PI * 2;
+            const sx = worldX + Math.cos(angle) * radius;
+            const sz = worldZ + Math.sin(angle) * radius;
+
+            const maskVal = this._sampleR(this._maskData, this._maskW, this._maskH, sx, sz);
+            if (maskVal > 150) return false;
         }
 
-        // Strong path signal: always reject.
-        if (maskVal > 150) return false;
+        const centerMask = this._sampleR(this._maskData, this._maskW, this._maskH, worldX, worldZ);
+        if (centerMask > 150) return false;
 
-        // Transition zone: thin out grass progressively.
+        return true;
+    }
+
+    isPathClearFast(worldX, worldZ) {
+        if (!this.ready) return true;
+        const maskVal = this._sampleR(this._maskData, this._maskW, this._maskH, worldX, worldZ);
+        if (maskVal > 150) return false;
         if (maskVal > 30) {
             const rejectionChance = (maskVal - 30) / 120;
             if (Math.random() < rejectionChance) return false;
         }
-
         return true;
     }
 
@@ -167,7 +165,7 @@ export class MyTerrain extends CGFobject {
 
         this.appearance.apply();
 
-        this.scene.scale(400, 1, 400);
+        this.scene.scale(300, 1, 300);
 
         this.plane.display();
 

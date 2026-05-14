@@ -1,30 +1,37 @@
 attribute vec3 aVertexPosition;
-attribute vec2 aTextureCoord;
+attribute vec3 aVertexNormal;
+attribute float aLocalY;
+attribute vec4 aGrassInfo;
 
 uniform mat4 uMVMatrix;
 uniform mat4 uPMatrix;
-
+uniform mat4 uNMatrix;
 uniform float uTime;
 uniform float uWindAmp;
 uniform float uWindFreq;
 
-varying vec2 vTextureCoord;
-varying float vTipness;
+varying float vLocalY;
+varying vec4 vGrassInfo;
+varying vec3 vNormal;
 
 void main() {
-    vTextureCoord = aTextureCoord;
+    vLocalY = aLocalY;
+    vGrassInfo = aGrassInfo;
+    // Optimization: Skip matrix multiply since light is computed in static model coords
+    vNormal = aVertexNormal;
 
-    // Tip = top of texture (v = 0). Root = bottom (v = 1).
-    // Sway only the tip. Anchor the root.
-    float tipness = 1.0 - aTextureCoord.y;
-    vTipness = tipness;
+    float phase = aGrassInfo.y;
+    float stiffness = aGrassInfo.z;
+    
+    // Fast polynomial approximation replaces slow GPU exponent pow()
+    float windFactor = aLocalY * aLocalY * 0.3;
+    
+    float swayX = sin(uTime * uWindFreq * stiffness + phase + aVertexPosition.x * 0.1) * uWindAmp * windFactor;
+    float swayZ = cos(uTime * uWindFreq * stiffness * 0.8 + phase + aVertexPosition.z * 0.1) * uWindAmp * windFactor;
 
-    // Per-clump phase from world-space x,z so neighbouring blades aren't in lockstep.
-    float phase = aVertexPosition.x * 0.13 + aVertexPosition.z * 0.27;
+    vec3 pos = aVertexPosition;
+    pos.x += swayX;
+    pos.z += swayZ;
 
-    vec3 displaced = aVertexPosition;
-    displaced.x += sin(uTime * uWindFreq + phase) * uWindAmp * tipness;
-    displaced.z += cos(uTime * uWindFreq * 0.7 + phase * 1.3) * uWindAmp * 0.5 * tipness;
-
-    gl_Position = uPMatrix * uMVMatrix * vec4(displaced, 1.0);
+    gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
 }
