@@ -50,8 +50,8 @@ export class MyWagon extends CGFobject {
     this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5, this.clothTexture);
     this.tongue     = new MyWagonTongue(scene, TONGUE_LENGTH, this.woodenTexture);
     // Wheels are baked geometry (rim + hub + spokes), textured with wood.
-    this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS, this.woodenTexture);
-    this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS, this.woodenTexture);
+    this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS, this.bedTexture);
+    this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS, this.bedTexture);
 
     // Horse is created at origin; _updateHorsePositions() immediately moves it
     // to the correct world coords so we don't duplicate the formula here.

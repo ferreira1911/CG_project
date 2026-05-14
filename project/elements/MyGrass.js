@@ -1,10 +1,10 @@
 import { CGFobject } from '../../lib/CGF.js';
 import { r } from '../utils.js';
 
-const CLUMP_COUNT_PER_PATCH = 4300; 
+const CLUMP_COUNT_PER_PATCH = 6000; 
 const BLADES_PER_CLUMP = 3;
-const BLADE_WIDTH      = 0.15; 
-const BLADE_HEIGHT     = 1.3;
+const BLADE_WIDTH      = 0.10; 
+const BLADE_HEIGHT     = 1.1;
 const PLACEMENT_TRIES  = CLUMP_COUNT_PER_PATCH * 5;
 
 export class MyGrass extends CGFobject {
@@ -35,7 +35,7 @@ export class MyGrass extends CGFobject {
       const x = r(patchCx - halfSize, patchCx + halfSize);
       const z = r(patchCz - halfSize, patchCz + halfSize);
       
-      if (x * x + z * z > 198 * 198) continue;
+      if (x * x + z * z > 148.5 * 148.5) continue;
       if (!terrain.isPathClearFast(x, z)) continue;
       
       // Custom block: skip if overlapping with rocks, hay bales, or flower groups

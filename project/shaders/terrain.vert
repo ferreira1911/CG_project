@@ -24,7 +24,7 @@ float sampleHeight(vec2 uv) {
 
 void main() {
     vTextureCoord = aTextureCoord;
-    vWorldXZ = aVertexPosition.xz * 400.0;
+    vWorldXZ = aVertexPosition.xz * 300.0;
 
     // Displace vertices in Y using the heightmap red channel.
     vec4 heightMapColor = texture2D(uSampler2, aTextureCoord);

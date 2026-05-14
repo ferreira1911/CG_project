@@ -9,6 +9,7 @@ import { MyCameraAnimator } from "./animators/MyCameraAnimator.js";
 import { MyUnitCube } from "./geometric/MyUnitCube.js";
 import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
+import { MySphere } from "./geometric/MySphere.js";
 import { MyHayBale } from "./elements/MyHayBale.js";
 import { MyArrow } from "./elements/MyArrow.js";
 import { r, pickSpot } from "./utils.js";
@@ -60,21 +61,26 @@ export class MyScene extends CGFscene {
 
     this.displayAxis = false;
     this.displayHUD = false;
-    this.displayWagon = false;
-    this.displayFlora = false;
-    this.displayArrows = false;
-    this.displayRocks = false;
-    this.displayHayBales = false;
+    this.displayWagon = true;
+    this.displayFlora = true;
+    this.displayArrows = true;
+    this.displayRocks = true;
+    this.displayHayBales = true;
     this.displayGrass = true;
     this.displaySky = true;
     this.displayTerrain = true;
 
     // Generation Parameters (Exposed to GUI)
-    this.numRocks = 30;
+    this.numRocks = 20;
+    this.numHaybales = 3;
+    
+    // Flora Geometry Parameters
     this.numFlowers = 180;
     this.numFlowerClusters = 6;
     this.flowerClusterRadius = 3.8;
-    this.numHaybales = 3;
+    this.flowerStemLength = 0.8;
+    this.flowerPetals = 4;
+    this.flowerPetalSize = 2.2;
     
     this.windAmp = 0.2;
     this.windFreq = 1.4;
@@ -183,8 +189,8 @@ export class MyScene extends CGFscene {
          
          this.floras.push(new MyFlora(
             this, fx, fy, fz, scale,
-            3, 30, 0.95, 0.55, 0.05, 0.6, 15,
-            r(6, 10) | 0, 1.2, 35, 0.3,
+            3, 30, this.flowerStemLength, 0.55, 0.05, 0.6, 15,
+            this.flowerPetals | 0, this.flowerPetalSize, 35, 0.3,
             null, null, r(0, 100), false, clusterColor
          ));
       }
@@ -201,13 +207,15 @@ export class MyScene extends CGFscene {
 
     // 6. Generate Grass Patches
     const gridSize = 9;
-    const step = 400 / gridSize;
+    const mapSize = 300;
+    const halfMap = mapSize / 2;
+    const step = mapSize / gridSize;
 
     for (let i = 0; i < gridSize; i++) {
         for (let j = 0; j < gridSize; j++) {
-            const cx = -200 + step / 2 + i * step;
-            const cz = -200 + step / 2 + j * step;
-            if (cx * cx + cz * cz > 200 * 200) continue; 
+            const cx = -halfMap + step / 2 + i * step;
+            const cz = -halfMap + step / 2 + j * step;
+            if (cx * cx + cz * cz > halfMap * halfMap) continue; 
             
             // MyGrass constructor automatically calls isGrassSpawnBlocked(x, z)!
             const patch = new MyGrass(this, this.grassShader, this.terrain, cx, cz, step);
@@ -330,6 +338,7 @@ export class MyScene extends CGFscene {
     this.cube     = new MyUnitCube(this);
     this.cylinder = new MyCylinder(this, 24, 1);
     this.circle   = new MyCircle(this, 24);
+    this.rockSphere = new MySphere(this, 0.5, 16, 8, false, 1, 0);
   }
 
   initShaders() {
@@ -530,7 +539,7 @@ export class MyScene extends CGFscene {
 
     // ── Distance Culling (Draw Distance) ──────────────────────────────────
     // Only draw objects within a certain radius of the camera to save GPU cycles
-    const DRAW_DIST_SQ = 160 * 160; // 160 units draw distance
+    const DRAW_DIST_SQ = 135 * 135; // 135 units draw distance
     const cx = this.camera.position[0];
     const cz = this.camera.position[2];
 

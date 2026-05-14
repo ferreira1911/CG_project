@@ -9,7 +9,7 @@ export class MyTerrain extends CGFobject {
         this.plane = new MyPlane(scene, 150);
 
         // World extent of the terrain (matches the scale() in display())
-        this.terrainSize = 400;
+        this.terrainSize = 300;
         // Must match `heightMapColor.r * 100.0` in terrain.vert
         this.maxHeight = 20.0;
 
@@ -165,7 +165,7 @@ export class MyTerrain extends CGFobject {
 
         this.appearance.apply();
 
-        this.scene.scale(400, 1, 400);
+        this.scene.scale(300, 1, 300);
 
         this.plane.display();
 

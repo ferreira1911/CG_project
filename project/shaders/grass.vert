@@ -17,12 +17,14 @@ varying vec3 vNormal;
 void main() {
     vLocalY = aLocalY;
     vGrassInfo = aGrassInfo;
-    vNormal = normalize((uNMatrix * vec4(aVertexNormal, 0.0)).xyz);
+    // Optimization: Skip matrix multiply since light is computed in static model coords
+    vNormal = aVertexNormal;
 
     float phase = aGrassInfo.y;
     float stiffness = aGrassInfo.z;
     
-    float windFactor = pow(aLocalY, 1.5) * 0.4;
+    // Fast polynomial approximation replaces slow GPU exponent pow()
+    float windFactor = aLocalY * aLocalY * 0.3;
     
     float swayX = sin(uTime * uWindFreq * stiffness + phase + aVertexPosition.x * 0.1) * uWindAmp * windFactor;
     float swayZ = cos(uTime * uWindFreq * stiffness * 0.8 + phase + aVertexPosition.z * 0.1) * uWindAmp * windFactor;

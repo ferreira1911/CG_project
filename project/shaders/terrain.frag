@@ -43,12 +43,15 @@ float vnoise(vec2 p) {
 
 void main() {
     // Cut off the square corners so the terrain fits perfectly inside the skybox sphere
-    if (dot(vWorldXZ, vWorldXZ) > 198.0 * 198.0) {
+    if (dot(vWorldXZ, vWorldXZ) > 148.5 * 148.5) {
         discard;
     }
     
     // Tile terrain/path textures for detail; keep mask in base UV space.
     vec4 colorTerrain = texture2D(uSampler, vTextureCoord * 30.0);
+    // Dynamically tint the ground texture to perfectly match the base/root green
+    // of our procedural grass palette, creating a seamless blended meadow.
+    colorTerrain.rgb *= vec3(0.65, 0.78, 0.48);
     vec4 colorPath = texture2D(uSampler3, vTextureCoord * 30.0);
     vec4 mask = texture2D(uSampler4, vTextureCoord);
     float fineDisp = texture2D(uSampler5, vTextureCoord * 30.0).r;
@@ -57,26 +60,9 @@ void main() {
     float pathBlend = smoothstep(0.18, 0.82, mask.r);
     vec4 texColor = mix(colorTerrain, colorPath, pathBlend);
 
-    // Recompute the terrain normal per fragment so the lighting follows the
-    // actual slope continuously instead of interpolating across triangle faces.
-    float hL = sampleHeight(vTextureCoord - vec2(uHeightTexel.x, 0.0));
-    float hR = sampleHeight(vTextureCoord + vec2(uHeightTexel.x, 0.0));
-    float hD = sampleHeight(vTextureCoord - vec2(0.0, uHeightTexel.y));
-    float hU = sampleHeight(vTextureCoord + vec2(0.0, uHeightTexel.y));
-
-    float dispL = texture2D(uSampler5, (vTextureCoord - vec2(uHeightTexel.x, 0.0)) * 30.0).r;
-    float dispR = texture2D(uSampler5, (vTextureCoord + vec2(uHeightTexel.x, 0.0)) * 30.0).r;
-    float dispD = texture2D(uSampler5, (vTextureCoord - vec2(0.0, uHeightTexel.y)) * 30.0).r;
-    float dispU = texture2D(uSampler5, (vTextureCoord + vec2(0.0, uHeightTexel.y)) * 30.0).r;
-
-    float hLFinal = hL + dispL * 0.8 * (1.0 - mask.r);
-    float hRFinal = hR + dispR * 0.8 * (1.0 - mask.r);
-    float hDFinal = hD + dispD * 0.8 * (1.0 - mask.r);
-    float hUFinal = hU + dispU * 0.8 * (1.0 - mask.r);
-
-    vec3 tangentX = vec3(2.0 * uHeightTexel.x, hRFinal - hLFinal, 0.0);
-    vec3 tangentZ = vec3(0.0, hUFinal - hDFinal, 2.0 * uHeightTexel.y);
-    vec3 terrainNormal = normalize(cross(tangentZ, tangentX));
+    // EXTREME FPS BOOST: Instead of 8 expensive per-fragment texture lookups to reconstruct
+    // normals on the fly, we consume the highly accurate vertex-interpolated vNormal.
+    vec3 terrainNormal = normalize(vNormal);
     
     // Slightly stronger directional lighting so the relief reads as terrain.
     vec3 lightDir = normalize(uLightPos);
