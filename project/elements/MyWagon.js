@@ -56,7 +56,7 @@ export class MyWagon extends CGFobject {
     // Horse is created at origin; _updateHorsePositions() immediately moves it
     // to the correct world coords so we don't duplicate the formula here.
     // Reduced the horse scale multiplier so the wagon feels significantly larger than the horse.
-    const horseScale = 0.014 * scale;
+    const horseScale = 0.018 * scale;
     this.horses = [
       new MyHorse(scene, 0, 0, 0, horseScale, 0, horseTexture),
     ];
@@ -71,8 +71,8 @@ export class MyWagon extends CGFobject {
     this.steeringAngle = 0;   // front wheel yaw offset (rad); + = left
 
     // ── Gameplay state ───────────────────────────────────────────────────────
-    this.maxHp = 100;
-    this.hp = 100;
+    this.maxHp = 150;
+    this.hp = 150;
     this.invulnerabilityTimer = 0;
 
     // ── Hay Bale state ──────────────────────────────────────────────────────

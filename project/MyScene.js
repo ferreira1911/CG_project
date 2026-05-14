@@ -82,8 +82,8 @@ export class MyScene extends CGFscene {
     this.flowerPetals = 4;
     this.flowerPetalSize = 2.2;
     
-    this.windAmp = 0.2;
-    this.windFreq = 1.4;
+    this.windAmp = 0.35;
+    this.windFreq = 1.7;
 
     this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
@@ -385,9 +385,15 @@ export class MyScene extends CGFscene {
     this.clothShader.setUniformsValues({ time: this.time });
     
     if (this.grassShader) {
+        // Simulate natural wind: blend two slow sinusoids at coprime periods
+        // so the wind never feels perfectly periodic. windAmp acts as peak strength.
+        const windBreath = 0.5 + 0.5 * Math.sin(this.time * 0.5);            // slow rise/fall (0 → 1)
+        const windGust   = 0.5 + 0.5 * Math.sin(this.time * 1.1 + 1.3);     // faster beat offset by phase
+        const liveAmp    = this.windAmp * windBreath * windGust;              // drops to near-0 in calm patches
+
         this.grassShader.setUniformsValues({ 
             uTime: this.time,
-            uWindAmp: this.windAmp,
+            uWindAmp: liveAmp,
             uWindFreq: this.windFreq
         });
     }
