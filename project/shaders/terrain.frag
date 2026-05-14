@@ -42,7 +42,17 @@ float vnoise(vec2 p) {
 
 void main() {
     // Tile terrain/path textures for detail; keep mask in base UV space.
-    vec4 colorTerrain = texture2D(uSampler, vTextureCoord * 30.0);
+    // Two-scale grass blend: wide tile for variety at distance, tight tile for
+    // close-up detail. Eliminates the obvious wallpaper repeat.
+    vec4 grassFar  = texture2D(uSampler, vTextureCoord * 30.0);
+    vec4 grassNear = texture2D(uSampler, vTextureCoord * 120.0);
+    vec4 colorTerrain = mix(grassFar, grassNear, 0.4);
+
+    // Low-frequency tint variation breaks "uniform carpet" feel.
+    float tintNoise = vnoise(vTextureCoord * 4.0 + vec2(99.1, 12.3));
+    vec3 grassTint = mix(vec3(0.85, 0.95, 0.80), vec3(1.05, 1.05, 0.95), tintNoise);
+    colorTerrain.rgb *= grassTint;
+
     vec4 colorPath = texture2D(uSampler3, vTextureCoord * 30.0);
     vec4 mask = texture2D(uSampler4, vTextureCoord);
     float fineDisp = texture2D(uSampler5, vTextureCoord * 30.0).r;
