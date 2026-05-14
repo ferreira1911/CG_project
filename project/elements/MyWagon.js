@@ -187,8 +187,8 @@ export class MyWagon extends CGFobject {
                 this.hp = Math.max(0, this.hp - 15);
                 this.invulnerabilityTimer = 1.0; // 1 second i-frames
                 
-                // Knockback: Reverse speed heavily to give maneuvering room
-                this.speed = -MAX_SPEED * 1.5; 
+                // Knockback: Reverse speed to give maneuvering room.
+                this.speed = -MAX_SPEED * 0.9; 
                 
                 // Trigger a camera shake on the scene
                 this.scene.cameraShake = 1.0;
@@ -198,7 +198,7 @@ export class MyWagon extends CGFobject {
     }
 
     // ── Animations ────────────────────────────────────────────────────────────
-    if (this.speed > 0.1) {
+    if (Math.abs(this.speed) > 0.1) {
         // If it was disabled, re-enable it using current time to prevent time-skipping
         if (!this.horseAnimator.active) this.horseAnimator.enable(this.scene.time);
         this.horseAnimator.update(this.scene.time);
