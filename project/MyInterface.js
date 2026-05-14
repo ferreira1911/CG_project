@@ -13,18 +13,33 @@ export class MyInterface extends CGFinterface {
         super.init(application);
 
         this.gui = new dat.GUI();
-        const visFolder = this.gui.addFolder('Visibility');
-        visFolder.add(this.scene, 'displayAxis').name('Display Axis');
-        visFolder.add(this.scene, 'displayHUD').name('Display HUD');
-        visFolder.add(this.scene, 'displayWagon').name('Display Wagon');
-        visFolder.add(this.scene, 'displayFlora').name('Display Flora');
-        visFolder.add(this.scene, 'displayArrows').name('Display Arrows');
-        visFolder.add(this.scene, 'displayRocks').name('Display Rocks');
-        visFolder.add(this.scene, 'displayHayBales').name('Display Hay Bales');
-        visFolder.add(this.scene, 'displayGrass').name('Display Grass');
-        visFolder.open();
+        
+        // 1. Global Scene (Initially active)
+        const globalFolder = this.gui.addFolder('Global Scene');
+        globalFolder.add(this.scene, 'displaySky').name('Sky / Panorama');
+        globalFolder.add(this.scene, 'displayTerrain').name('Terrain');
+        globalFolder.add(this.scene, 'displayGrass').name('Grass');
+        globalFolder.open();
 
-        this.gui.add(this.scene, 'freeCamera').name('Free Camera');
+        // 2. World Elements (Initially inactive)
+        const gameFolder = this.gui.addFolder('World Elements');
+        gameFolder.add(this.scene, 'displayWagon').name('Wagon & Horses');
+        gameFolder.add(this.scene, 'displayFlora').name('Flowers / Flora');
+        gameFolder.add(this.scene, 'displayRocks').name('Rocks');
+        gameFolder.add(this.scene, 'displayHayBales').name('Hay Bales');
+
+        // 3. Dynamic Grass Config (Sliders)
+        const grassFolder = this.gui.addFolder('Grass Parameters');
+        grassFolder.add(this.scene, 'windAmp', 0.0, 1.0, 0.01).name('Wind Strength');
+        grassFolder.add(this.scene, 'windFreq', 0.1, 5.0, 0.1).name('Wind Frequency');
+        grassFolder.open();
+
+        // 4. Debug Tools
+        const debugFolder = this.gui.addFolder('Tools & Debug');
+        debugFolder.add(this.scene, 'displayAxis').name('Display Axis');
+        debugFolder.add(this.scene, 'displayHUD').name('Display HUD (HP)');
+        debugFolder.add(this.scene, 'displayArrows').name('Direction Arrows');
+        debugFolder.add(this.scene, 'freeCamera').name('Free Camera');
 
         this.initKeys();
 

@@ -4,6 +4,7 @@ precision highp float;
 
 varying vec2 vTextureCoord;
 varying vec3 vNormal;
+varying vec2 vWorldXZ;
 
 uniform sampler2D uSampler;
 uniform sampler2D uSampler2;
@@ -41,6 +42,11 @@ float vnoise(vec2 p) {
 }
 
 void main() {
+    // Cut off the square corners so the terrain fits perfectly inside the skybox sphere
+    if (dot(vWorldXZ, vWorldXZ) > 198.0 * 198.0) {
+        discard;
+    }
+    
     // Tile terrain/path textures for detail; keep mask in base UV space.
     vec4 colorTerrain = texture2D(uSampler, vTextureCoord * 30.0);
     vec4 colorPath = texture2D(uSampler3, vTextureCoord * 30.0);

@@ -2,26 +2,43 @@
 precision highp float;
 #endif
 
-uniform sampler2D uSampler;
+varying float vLocalY;
+varying vec4 vGrassInfo;
+varying vec3 vNormal;
 
-varying vec2 vTextureCoord;
-varying float vTipness;
+uniform float uBladeHeight;
 
 void main() {
-    vec4 c = texture2D(uSampler, vTextureCoord);
+    float t = clamp(vLocalY / uBladeHeight, 0.0, 1.0);
+    
+    // Green grass palette
+    vec3 rootColorG = vec3(0.06, 0.15, 0.03); 
+    vec3 bodyColorG = vec3(0.15, 0.35, 0.08); 
+    vec3 tipColorG  = vec3(0.22, 0.50, 0.12); 
+    
+    vec3 colorG = mix(rootColorG, bodyColorG, smoothstep(0.0, 0.4, t));
+    colorG = mix(colorG, tipColorG, smoothstep(0.4, 1.0, t));
 
-    // Alpha test — discard transparent fragments instead of blending,
-    // so order-independence is automatic and depth writes remain correct.
-    if (c.a < 0.5) discard;
+    // Dry grass palette (Yellow / Golden Straw)
+    vec3 rootColorD = vec3(0.20, 0.18, 0.05); 
+    vec3 bodyColorD = vec3(0.40, 0.35, 0.08); 
+    vec3 tipColorD  = vec3(0.60, 0.55, 0.15); 
+    
+    vec3 colorD = mix(rootColorD, bodyColorD, smoothstep(0.0, 0.4, t));
+    colorD = mix(colorD, tipColorD, smoothstep(0.4, 1.0, t));
+    
+    // Mix the two palettes based on the dryness factor computed in the CPU
+    float dryness = vGrassInfo.w;
+    vec3 color = mix(colorG, colorD, dryness);
+    
+    // Add subtle variation per blade
+    color += vec3(vGrassInfo.x * 0.05, vGrassInfo.x * 0.07, vGrassInfo.x * 0.02);
 
-    // Pull the saturation down a touch — texture grass tends to be too vivid.
-    float luma = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-    c.rgb = mix(vec3(luma), c.rgb, 0.65);
-
-    // Tint warmer toward the root (drier base, greener tip) and darken slightly.
-    vec3 rootTint = vec3(0.55, 0.50, 0.30);
-    c.rgb = mix(c.rgb * rootTint, c.rgb, vTipness);
-    c.rgb *= mix(0.7, 0.82, vTipness);
-
-    gl_FragColor = c;
+    // Simple robust lighting logic
+    vec3 lightDir = normalize(vec3(0.5, 0.8, 0.3));
+    float diffuse = max(dot(vNormal, lightDir), 0.3);
+    
+    float ambient = 0.45; // Balanced ambient
+    
+    gl_FragColor = vec4(color * (diffuse + ambient), 1.0);
 }

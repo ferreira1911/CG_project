@@ -57,14 +57,20 @@ export class MyScene extends CGFscene {
     this.haybales = [];
     this._scattered = false;
 
-    this.displayAxis = true;
-    this.displayHUD = true;
-    this.displayWagon = true;
-    this.displayFlora = true;
-    this.displayArrows = true;
-    this.displayRocks = true;
-    this.displayHayBales = true;
+    this.displayAxis = false;
+    this.displayHUD = false;
+    this.displayWagon = false;
+    this.displayFlora = false;
+    this.displayArrows = false;
+    this.displayRocks = false;
+    this.displayHayBales = false;
     this.displayGrass = true;
+    this.displaySky = true;
+    this.displayTerrain = true;
+    
+    this.windAmp = 0.2;
+    this.windFreq = 1.4;
+
     this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
     // Start 120 units high. Hold for 4 seconds (panorama shot), then drop over 4 seconds.
@@ -162,9 +168,28 @@ export class MyScene extends CGFscene {
     }
 
 
-    this.grass1 = new MyGrass(this, this.grassTexture, this.terrain);
-    this.grass2 = new MyGrass(this, this.grassTexture, this.terrain);
-    this.grass3 = new MyGrass(this, this.grassTexture, this.terrain);
+    this.grassShader = new CGFshader(this.gl, 'shaders/grass.vert', 'shaders/grass.frag');
+    this.grassShader.setUniformsValues({
+      uTime:     0,
+      uWindAmp:  this.windAmp,
+      uWindFreq: this.windFreq,
+      uBladeHeight: 1.3 * 1.3
+    });
+
+    this.grassPatches = [];
+    const gridSize = 9; // 81 patches over the map (massively increases density per square meter)
+    const step = 400 / gridSize;
+
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+            const cx = -200 + step / 2 + i * step;
+            const cz = -200 + step / 2 + j * step;
+            if (cx * cx + cz * cz > 200 * 200) continue; // skip corners
+            
+            const patch = new MyGrass(this, this.grassShader, this.terrain, cx, cz, step);
+            this.grassPatches.push(patch);
+        }
+    }
 
     // Hay bales: scatter around the terrain avoiding the path
     for (let i = 0; i < HAYBALE_COUNT; i++) {
@@ -291,10 +316,14 @@ export class MyScene extends CGFscene {
 
     this.panoramaShader.setUniformsValues({ time: this.time });
     this.clothShader.setUniformsValues({ time: this.time });
-    if (this.grass1) this.grass1.setTime(this.time);
-    if (this.grass2) this.grass2.setTime(this.time);
-    if (this.grass3) this.grass3.setTime(this.time);
-    if (this.grass4) this.grass4.setTime(this.time);
+    
+    if (this.grassShader) {
+        this.grassShader.setUniformsValues({ 
+            uTime: this.time,
+            uWindAmp: this.windAmp,
+            uWindFreq: this.windFreq
+        });
+    }
     
     if (this.arrowShader) {
         this.arrowShader.setUniformsValues({ uTime: this.time });
@@ -425,12 +454,16 @@ export class MyScene extends CGFscene {
     this.setDefaultAppearance();
 
     // Sky
-    this.setActiveShader(this.panoramaShader);
-    this.panoramaTexture.bind(0);
-    this.panorama.display();
-    this.setActiveShader(this.defaultShader);
+    if (this.displaySky) {
+        this.setActiveShader(this.panoramaShader);
+        this.panoramaTexture.bind(0);
+        this.panorama.display();
+        this.setActiveShader(this.defaultShader);
+    }
 
-    this.terrain.display();
+    if (this.displayTerrain) {
+        this.terrain.display();
+    }
 
     if (!this._scattered && this.terrain.ready) {
       this.scatter();
@@ -524,11 +557,16 @@ export class MyScene extends CGFscene {
       }
     }
 
-    if (this.displayGrass) {
-        if (this.grass1) this.grass1.display();
-        if (this.grass2) this.grass2.display();
-        if (this.grass3) this.grass3.display();
-        if (this.grass4) this.grass4.display();
+    if (this.displayGrass && this.grassPatches && this.grassPatches.length > 0) {
+        this.setActiveShader(this.grassShader);
+        this.gl.disable(this.gl.CULL_FACE);
+        
+        for (const patch of this.grassPatches) {
+            patch.displayShared();
+        }
+        
+        this.gl.enable(this.gl.CULL_FACE);
+        this.setActiveShader(this.defaultShader);
     }
   }
 }
