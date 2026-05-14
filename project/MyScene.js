@@ -236,6 +236,10 @@ export class MyScene extends CGFscene {
     this.barkTexture  = new CGFtexture(this, './resources/textures/rocks/rockTexture2.jpg');
     this.hayTexture   = new CGFtexture(this, './resources/textures/wagon/hay.jpg');
     this.blankTexture = new CGFtexture(this, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
+    this.pebbleTexture = new CGFtexture(this, './resources/textures/terrain/pebbles.jpg');
+    this.flowerScatteredTexture = new CGFtexture(this, './resources/textures/terrain/flower_scattered.jpg');
+    this.decayLeavesTexture = new CGFtexture(this, './resources/textures/terrain/decayLeaves.jpg');
+    this.rockyTexture = new CGFtexture(this, './resources/textures/terrain/rocky.jpg');
   }
 
 

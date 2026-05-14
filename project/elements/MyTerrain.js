@@ -58,6 +58,10 @@ export class MyTerrain extends CGFobject {
             uSampler3: 2,
             uSampler4: 3,
             uSampler5: 4,
+            uSampler6: 5,
+            uSampler7: 6,
+            uSampler8: 7,
+            uSampler9: 8,
             uTerrainHeight: this.maxHeight,
             uHeightTexel: texelSize,
         });
@@ -156,6 +160,10 @@ export class MyTerrain extends CGFobject {
         this.pathMap.bind(2);
         this.maskMap.bind(3);
         this.dispMap.bind(4);
+        this.scene.pebbleTexture.bind(5);
+        this.scene.flowerScatteredTexture.bind(6);
+        this.scene.rockyTexture.bind(7);
+        this.scene.decayLeavesTexture.bind(8);
 
         this.appearance.apply();
 
