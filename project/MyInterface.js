@@ -45,6 +45,7 @@ export class MyInterface extends CGFinterface {
         const genFolder = this.gui.addFolder('World Generator');
         genFolder.add(this.scene, 'numRocks', 0, 80, 1).name('Num Rocks');
         genFolder.add(this.scene, 'numHaybales', 0, 15, 1).name('Num Haybales');
+        genFolder.add(this.scene, 'numTrees', 0, 12, 1).name('Num Trees');
         genFolder.add(this.scene, 'numFlowers', 10, 300, 5).name('Total Flowers');
         genFolder.add(this.scene, 'numFlowerClusters', 1, 20, 1).name('Flora Groups');
         genFolder.add(this.scene, 'flowerClusterRadius', 1.5, 12.0, 0.1).name('Group Radius');

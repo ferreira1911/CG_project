@@ -19,6 +19,10 @@ uniform vec2 uHeightTexel;
 uniform float uTerrainHeight;
 uniform vec3 uLightPos;
 
+#define MAX_TREES 12
+uniform vec2 uTreePos[MAX_TREES]; // world XZ of each tree trunk
+uniform int  uTreeCount;          // number of valid entries in uTreePos
+
 float sampleHeight(vec2 uv) {
     vec2 clampedUV = clamp(uv, vec2(0.0), vec2(1.0));
     return texture2D(uSampler2, clampedUV).r * uTerrainHeight;
@@ -101,8 +105,24 @@ void main() {
     pebbleMask *= mix(0.35, 1.0, pathEdge);
     pebbleMask *= (1.0 - pathBlend);
 
+    // Confine rocky to the map perimeter. rockyNoise still gates it, so it
+    // appears as scattered patches near the edge rather than a solid ring.
+    float rockyPerimeter = smoothstep(100.0, 142.0, length(vWorldXZ));
+    rockyMask  *= rockyPerimeter;
     rockyMask  *= (1.0 - pathBlend);
     rockyMask  *= (1.0 - pebbleMask * 0.5);
+
+    // Decay leaves only spawn next to trees: fade the leaf overlay by the
+    // distance from this fragment to the nearest tree trunk.
+    float treeDistSq = 1.0e9;
+    for (int ti = 0; ti < MAX_TREES; ti++) {
+        if (ti >= uTreeCount) break;
+        vec2 dxz = vWorldXZ - uTreePos[ti];
+        treeDistSq = min(treeDistSq, dot(dxz, dxz));
+    }
+    // Full litter within ~9 units of a trunk, gone by ~16 units.
+    float treeNear = 1.0 - smoothstep(81.0, 256.0, treeDistSq);
+    leafMask  *= treeNear;
 
     leafMask   *= (1.0 - pathBlend);
     leafMask   *= (1.0 - pebbleMask * 0.6);

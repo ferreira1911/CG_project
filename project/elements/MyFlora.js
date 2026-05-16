@@ -2,30 +2,41 @@ import { CGFobject, CGFappearance } from '../../lib/CGF.js';
 
 const CYLINDER_SLICES = 8;
 
-// Local (untransformed) leaf-cluster geometry — three perpendicular quads.
-const LEAF = (() => {
+// Local (untransformed) conifer "needle spray": a fan of thin tapered spikes
+// radiating from the twig tip, splayed into a shallow cone around +Y (the
+// branch direction at a tip) and drooping at the ends. Defined once; per-tip
+// variety comes from the transform applied in _emitSprig's callers.
+const SPRIG = (() => {
   const verts = [], norms = [], uvs = [], inds = [];
-  const angles = [0, Math.PI / 3, 2 * Math.PI / 3];
-  for (let qi = 0; qi < angles.length; qi++) {
-    const a = angles[qi];
+  const SPIKES = 7;
+  const SPREAD = 0.85; // radial splay of each blade
+  const LIFT   = 0.80; // forward (+Y, along the branch) component
+  const DROOP  = 0.32; // how far the blade tip sags
+  const WROOT  = 0.17; // half-width at the root (wide → not needle-like)
+  const WTIP   = 0.07; // half-width at the tip (blunt, non-zero → not pointy)
+  for (let s = 0; s < SPIKES; s++) {
+    const a  = (s / SPIKES) * Math.PI * 2;
     const ca = Math.cos(a), sa = Math.sin(a);
-    const r  = (x, y, z) => [x * ca + z * sa, y, -x * sa + z * ca];
-    const v0 = r(-0.5, -0.5, 0);
-    const v1 = r( 0.5, -0.5, 0);
-    const v2 = r(-0.5,  0.5, 0);
-    const v3 = r( 0.5,  0.5, 0);
-    const nF = r(0, 0,  1);
-    const nB = r(0, 0, -1);
-    const off = verts.length / 3;
-    verts.push(...v0, ...v1, ...v2, ...v3, ...v0, ...v1, ...v2, ...v3);
-    norms.push(...nF, ...nF, ...nF, ...nF, ...nB, ...nB, ...nB, ...nB);
-    uvs.push(0,1, 1,1, 0,0, 1,0, 0,1, 1,1, 0,0, 1,0);
-    inds.push(
-      off + 0, off + 1, off + 2,
-      off + 1, off + 3, off + 2,
-      off + 6, off + 5, off + 4,
-      off + 6, off + 7, off + 5
-    );
+    const tc = [SPREAD * ca, LIFT - DROOP, SPREAD * sa]; // tip centre
+    // Width axis perpendicular to the blade, in the horizontal plane.
+    const px = -sa, pz = ca;
+    const r0 = [ px * WROOT, 0,  pz * WROOT];
+    const r1 = [-px * WROOT, 0, -pz * WROOT];
+    const t0 = [tc[0] + px * WTIP, tc[1], tc[2] + pz * WTIP];
+    const t1 = [tc[0] - px * WTIP, tc[1], tc[2] - pz * WTIP];
+    const o  = verts.length / 3;
+    verts.push(...r0, ...r1, ...t1, ...t0); // quad: blunt-tipped tapered blade
+    // Flat face normal for the blade quad.
+    const e1 = [r1[0]-r0[0], r1[1]-r0[1], r1[2]-r0[2]];
+    const e2 = [t0[0]-r0[0], t0[1]-r0[1], t0[2]-r0[2]];
+    let nx = e1[1]*e2[2]-e1[2]*e2[1];
+    let ny = e1[2]*e2[0]-e1[0]*e2[2];
+    let nz = e1[0]*e2[1]-e1[1]*e2[0];
+    const L = Math.sqrt(nx*nx+ny*ny+nz*nz) || 1;
+    nx/=L; ny/=L; nz/=L;
+    norms.push(nx,ny,nz, nx,ny,nz, nx,ny,nz, nx,ny,nz);
+    uvs.push(0,0, 1,0, 1,1, 0,1);
+    inds.push(o, o+1, o+2,  o, o+2, o+3);
   }
   return { verts, norms, uvs, inds };
 })();
@@ -161,8 +172,10 @@ export class MyFlora extends CGFobject {
 
     this.petalApp = new CGFappearance(scene);
     if (isTree) {
-        this.petalApp.setAmbient(0.1, 0.3, 0.1, 1.0);
-        this.petalApp.setDiffuse(0.3, 0.7, 0.3, 1.0);
+        // Deep desaturated pine green so it reads as conifer foliage,
+        // not bright flat leaves.
+        this.petalApp.setAmbient(0.05, 0.14, 0.08, 1.0);
+        this.petalApp.setDiffuse(0.12, 0.34, 0.18, 1.0);
     } else {
         this.petalApp.setAmbient(petalColor[0] * 0.6, petalColor[1] * 0.6, petalColor[2] * 0.6, 1.0);
         this.petalApp.setDiffuse(petalColor[0] * 0.9, petalColor[1] * 0.9, petalColor[2] * 0.9, 1.0);
@@ -262,22 +275,24 @@ export class MyFlora extends CGFobject {
     const ring = CYLINDER_SLICES + 1;
     for (let i = 0; i < CYLINDER_SLICES; i++) {
       const cur = base + i, nxt = cur + 1, top = cur + ring, topNext = top + 1;
-      this._bi.push(cur, nxt, top, nxt, topNext, top);
+      // Outward-facing winding: with default CCW front + back-face culling,
+      // (cur,nxt,top) faced inward and got culled. This order faces outward.
+      this._bi.push(cur, top, nxt, nxt, top, topNext);
     }
   }
 
-  _emitLeafCluster() {
+  _emitSprig() {
     const nm = this._normalMatrix();
     const base = this._pv.length / 3;
     const tmp = [0, 0, 0];
-    for (let i = 0; i < LEAF.verts.length / 3; i++) {
-      this._txPos(LEAF.verts[i*3], LEAF.verts[i*3+1], LEAF.verts[i*3+2], tmp);
+    for (let i = 0; i < SPRIG.verts.length / 3; i++) {
+      this._txPos(SPRIG.verts[i*3], SPRIG.verts[i*3+1], SPRIG.verts[i*3+2], tmp);
       this._pv.push(...tmp);
-      this._txNorm(nm, LEAF.norms[i*3], LEAF.norms[i*3+1], LEAF.norms[i*3+2], tmp);
+      this._txNorm(nm, SPRIG.norms[i*3], SPRIG.norms[i*3+1], SPRIG.norms[i*3+2], tmp);
       this._pn.push(...tmp);
-      this._pt.push(LEAF.uvs[i*2], LEAF.uvs[i*2+1]);
+      this._pt.push(SPRIG.uvs[i*2], SPRIG.uvs[i*2+1]);
     }
-    for (let k = 0; k < LEAF.inds.length; k++) this._pi.push(base + LEAF.inds[k]);
+    for (let k = 0; k < SPRIG.inds.length; k++) this._pi.push(base + SPRIG.inds[k]);
   }
 
   _emitPetal() {
@@ -309,24 +324,24 @@ export class MyFlora extends CGFobject {
   }
 
   _bake(currentDepth, currentLength, currentThickness) {
-    if (this.isTree && currentDepth <= 3) {
-      const count = this.petalCount * 4;
-      for (let i = 0; i < count; i++) {
-        const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
-        const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
-        const sBase = 0.2 * this.petalSize * sizeJ * 2.2;
-        const sH    = sBase * 1.8;
-        this._push();
-        this._translate((this.rand()-0.5)*0.5, (this.rand()-0.5)*0.5, (this.rand()-0.5)*0.5);
-        this._rotateY(i * (Math.PI * 2) / count + this.rand());
-        this._rotateX(this.petalTilt + tiltJ);
-        this._translate(0, sH * 0.5, 0);
-        this._scale(sBase, sH, sBase);
-        this._emitLeafCluster();
-        this._pop();
+    if (this.isTree) {
+      if (currentDepth === 0) {
+        // Foliage lives ONLY at twig tips, so it can never be embedded in
+        // bark. A few needle sprigs per tip with random spin/tilt give a
+        // full, varied conifer spray that follows the branch skeleton.
+        const n = 2 + Math.floor(this.rand() * 2);
+        for (let i = 0; i < n; i++) {
+          const sz = this.petalSize * (0.8 + this.rand() * 0.5);
+          this._push();
+          this._rotateY(this.rand() * Math.PI * 2);
+          this._rotateX((this.rand() - 0.5) * 0.6);
+          this._scale(sz, sz, sz);
+          this._emitSprig();
+          this._pop();
+        }
+        return;
       }
-      if (currentDepth === 0) return;
-    } else if (!this.isTree && currentDepth === 0) {
+    } else if (currentDepth === 0) {
       const count = this.petalCount * 1.5;
       for (let i = 0; i < count; i++) {
         const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
@@ -354,24 +369,23 @@ export class MyFlora extends CGFobject {
     this._emitCylinder(currentLength);
     this._pop();
 
-    if (currentDepth > 0 && currentDepth <= 3) {
-      const midLeafProb = this.isTree ? 0.9 : 0.2;
-      if (this.rand() < midLeafProb) {
-        const numMidLeaves = Math.floor(1 + this.rand() * (this.isTree ? 6 : 1));
+    if (!this.isTree && currentDepth > 0 && currentDepth <= 3) {
+      if (this.rand() < 0.2) {
+        const numMidLeaves = Math.floor(1 + this.rand());
         for (let i = 0; i < numMidLeaves; i++) {
           const heightPos = currentLength * (0.2 + this.rand() * 0.6);
           const sizeJ = 1 + (this.rand() - 0.5) * 2 * this.petalJitter;
           const tiltJ = (this.rand() - 0.5) * 2 * this.petalJitter;
           const angleY = this.rand() * Math.PI * 2;
-          const sBase = 0.2 * this.petalSize * sizeJ * (this.isTree ? 1.5 : 0.4);
-          const sH    = sBase * (this.isTree ? 1.5 : 2.0);
+          const sBase = 0.2 * this.petalSize * sizeJ * 0.4;
+          const sH    = sBase * 2.0;
           this._push();
           this._translate(0, heightPos, 0);
           this._rotateY(angleY);
           this._rotateX(this.petalTilt + tiltJ + 0.5);
           this._translate(0, sH * 0.5, 0);
           this._scale(sBase, sH, sBase);
-          if (this.isTree) this._emitLeafCluster(); else this._emitPetal();
+          this._emitPetal();
           this._pop();
         }
       }

@@ -2,7 +2,7 @@ import { CGFobject, CGFappearance } from '../../lib/CGF.js';
 
 const DEFAULT_THICKNESS = 0.15;
 
-const SLICES         = 16;   // around the rim / hub
+const SLICES         = 32;   // around the rim / hub
 const N_SPOKES       = 8;
 const HUB_FRAC       = 0.15; // hub radius / wheel radius
 const RIM_INNER_FRAC = 0.92; // inner rim radius / wheel radius (where spokes meet rim)

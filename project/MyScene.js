@@ -57,6 +57,7 @@ export class MyScene extends CGFscene {
     this.floras   = [];
     this.haybales = [];
     this.flowerClusters = [];
+    this.treeZones = [];
     this._scattered = false;
 
     this.displayAxis = false;
@@ -73,6 +74,7 @@ export class MyScene extends CGFscene {
     // Generation Parameters (Exposed to GUI)
     this.numRocks = 20;
     this.numHaybales = 3;
+    this.numTrees = 4;
     
     // Flora Geometry Parameters
     this.numFlowers = 180;
@@ -107,6 +109,7 @@ export class MyScene extends CGFscene {
     this.floras = [];
     this.haybales = [];
     this.flowerClusters = [];
+    this.treeZones = [];
     this.grassPatches = [];
 
     const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
@@ -196,6 +199,52 @@ export class MyScene extends CGFscene {
       }
     }
 
+    // 4b. Trees — a few L-system conifers. Pushed into `floras` so they render
+    // through the existing flora batch pass (no extra draw/shader code). Kept
+    // sparse and spread out so they don't crowd the scene.
+    for (let i = 0; i < this.numTrees; i++) {
+      let tx, tz, tries = 0, ok = false;
+      do {
+        tx = r(-110, 110);
+        tz = r(-110, 110);
+        tries++;
+        ok = this.terrain.isPathClear(tx, tz, 3.0);
+        if (ok) {
+          for (const zone of this.treeZones) {
+            const dx = tx - zone.x, dz = tz - zone.z;
+            if (dx * dx + dz * dz < 22 * 22) { ok = false; break; }
+          }
+        }
+      } while (!ok && tries < 30);
+      if (!ok) continue;
+
+      const ty = this.terrain.heightAt(tx, tz);
+      const scale = r(2, 3);
+      this.floras.push(new MyFlora(
+        this, tx, ty, tz, scale,
+        3, 28, 1.6, 0.78, 0.28, 0.72, 22,
+        1, 0.9, 30, 0.45,
+        null, this.barkTexture, r(0, 100), true
+      ));
+      this.treeZones.push({ x: tx, z: tz, radius: 2.0 * scale });
+    }
+
+    // Feed tree trunk positions to the terrain shader so the decay-leaves
+    // overlay only appears next to trees (must match MAX_TREES in terrain.frag).
+    const MAX_TREES = 12;
+    const treePos = new Array(MAX_TREES * 2).fill(0);
+    const treeCount = Math.min(this.treeZones.length, MAX_TREES);
+    for (let i = 0; i < treeCount; i++) {
+      treePos[i * 2]     = this.treeZones[i].x;
+      treePos[i * 2 + 1] = this.treeZones[i].z;
+    }
+    if (this.terrain && this.terrain.terrainShader) {
+      this.terrain.terrainShader.setUniformsValues({
+        uTreeCount: treeCount,
+        uTreePos: treePos
+      });
+    }
+
     // 5. Grass Shader setup
     this.grassShader = new CGFshader(this.gl, 'shaders/grass.vert', 'shaders/grass.frag');
     this.grassShader.setUniformsValues({
@@ -245,6 +294,16 @@ export class MyScene extends CGFscene {
         const dz = z - hb.z;
         const radius = (hb.scale || 1.0) * 1.75; 
         if (dx * dx + dz * dz < radius * radius) return true;
+    }
+
+    // Check intersection with Tree trunks
+    if (this.treeZones) {
+        for (let i = 0; i < this.treeZones.length; i++) {
+            const t = this.treeZones[i];
+            const dx = x - t.x;
+            const dz = z - t.z;
+            if (dx * dx + dz * dz < t.radius * t.radius) return true;
+        }
     }
 
     // Check intersection with Flower Grouping Zones
@@ -387,9 +446,13 @@ export class MyScene extends CGFscene {
     if (this.grassShader) {
         // Simulate natural wind: blend two slow sinusoids at coprime periods
         // so the wind never feels perfectly periodic. windAmp acts as peak strength.
-        const windBreath = 0.5 + 0.5 * Math.sin(this.time * 0.5);            // slow rise/fall (0 → 1)
-        const windGust   = 0.5 + 0.5 * Math.sin(this.time * 1.1 + 1.3);     // faster beat offset by phase
-        const liveAmp    = this.windAmp * windBreath * windGust;              // drops to near-0 in calm patches
+        // Simulate natural wind: windBreath is power-shaped so it rises fast,
+        // lingers at full strength for a moment, then drops quickly — like a real gust.
+        // Exponent < 1 biases the 0..1 sine value toward 1 (flat top effect).
+        const rawBreath  = 0.5 + 0.5 * Math.sin(this.time * 0.5);            // 0..1, slow cycle (~12.5s)
+        const windBreath = Math.pow(rawBreath, 0.25);                          // plateau: spends ~70% of time above 0.85
+        const windGust   = 0.6 + 0.4 * Math.sin(this.time * 1.1 + 1.3);      // subtle irregular beat (never drops to 0)
+        const liveAmp    = this.windAmp * windBreath * windGust;               // peak = windAmp, calm pockets near 0
 
         this.grassShader.setUniformsValues({ 
             uTime: this.time,
