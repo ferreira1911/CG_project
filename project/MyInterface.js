@@ -19,7 +19,6 @@ export class MyInterface extends CGFinterface {
         globalFolder.add(this.scene, 'displaySky').name('Sky / Panorama');
         globalFolder.add(this.scene, 'displayTerrain').name('Terrain');
         globalFolder.add(this.scene, 'displayGrass').name('Grass');
-        globalFolder.open();
 
         // 2. World Elements (Initially active)
         const gameFolder = this.gui.addFolder('World Elements');
@@ -27,13 +26,11 @@ export class MyInterface extends CGFinterface {
         gameFolder.add(this.scene, 'displayFlora').name('Flowers / Flora');
         gameFolder.add(this.scene, 'displayRocks').name('Rocks');
         gameFolder.add(this.scene, 'displayHayBales').name('Hay Bales');
-        gameFolder.open();
 
         // 3. Dynamic Grass Config (Sliders)
         const grassFolder = this.gui.addFolder('Grass Parameters');
         grassFolder.add(this.scene, 'windAmp', 0.0, 1.0, 0.01).name('Wind Strength');
         grassFolder.add(this.scene, 'windFreq', 0.1, 5.0, 0.1).name('Wind Frequency');
-        grassFolder.open();
 
         // 4. Flora Geometry Config (Individual flowers)
         const flowerFolder = this.gui.addFolder('Flora Shape/Geometry');
@@ -50,9 +47,16 @@ export class MyInterface extends CGFinterface {
         genFolder.add(this.scene, 'numFlowerClusters', 1, 20, 1).name('Flora Groups');
         genFolder.add(this.scene, 'flowerClusterRadius', 1.5, 12.0, 0.1).name('Group Radius');
         genFolder.add(this.scene, 'scatter').name('Regenerate World');
-        genFolder.open();
 
-        // 6. Debug Tools
+        // 6. Game Stats
+        const statsFolder = this.gui.addFolder('Game Stats');
+        statsFolder.add(this.scene, 'uiHp').name('Current HP').listen();
+        statsFolder.add(this.scene, 'uiDamage').name('Inst. Damage').listen();
+        statsFolder.add(this.scene, 'uiRestored').name('Inst. Restored').listen();
+        statsFolder.add(this.scene, 'uiBalesDelivered').name('Bales Delivered').listen();
+        statsFolder.add(this.scene, 'uiScore').name('Score (Time)').listen();
+
+        // 7. Debug Tools
         const debugFolder = this.gui.addFolder('Tools & Debug');
         debugFolder.add(this.scene, 'displayAxis').name('Display Axis');
         debugFolder.add(this.scene, 'displayHUD').name('Display HUD (HP)');

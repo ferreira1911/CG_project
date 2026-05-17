@@ -5,6 +5,7 @@ import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
 import { MyGrass } from "./elements/MyGrass.js";
 import { MyWagon } from "./elements/MyWagon.js";
+import { MyBarn } from "./elements/MyBarn.js";
 import { MyCameraAnimator } from "./animators/MyCameraAnimator.js";
 import { MyUnitCube } from "./geometric/MyUnitCube.js";
 import { MyCylinder } from "./geometric/MyCylinder.js";
@@ -101,6 +102,13 @@ export class MyScene extends CGFscene {
     this.hpNumEl = document.getElementById('hp-number');
     this.hpBarEl = document.getElementById('hp-bar');
     this.lastRenderedHp = -1; // Force first update
+
+    // GUI Stats variables
+    this.uiHp = 150;
+    this.uiDamage = 0;
+    this.uiRestored = 0;
+    this.uiBalesDelivered = 0;
+    this.uiScore = 0;
   }
 
   scatter() {
@@ -113,7 +121,21 @@ export class MyScene extends CGFscene {
     this.grassPatches = [];
 
     const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
-    this.wagon = new MyWagon(this, wx, wy, wz, r(0, Math.PI * 2), 1.0, this.horseTexture);
+    const yaw = r(0, Math.PI * 2);
+    
+    this.barn = new MyBarn(this, wx, wy, wz, yaw, {
+        wood: this.barnRedWoodTexture,
+        front: this.barnFrontTexture,
+        roof: this.barnRedWoodTexture
+    });
+
+    const spawnZ = this.barn.areaOffsetZ - 2.5;
+    const cy = Math.cos(yaw);
+    const sy = Math.sin(yaw);
+    const wagonX = wx + spawnZ * sy;
+    const wagonZ = wz + spawnZ * cy;
+
+    this.wagon = new MyWagon(this, wagonX, this.terrain.heightAt(wagonX, wagonZ), wagonZ, yaw, 1.0, this.horseTexture);
 
     // 2. Rocks: baked displaced geometry
     const rockTextures = [this.rockColorMap1, this.rockColorMap2, this.rockColorMap3];
@@ -390,6 +412,9 @@ export class MyScene extends CGFscene {
     this.flowerScatteredTexture = new CGFtexture(this, './resources/textures/terrain/flower_scattered.jpg');
     this.decayLeavesTexture = new CGFtexture(this, './resources/textures/terrain/decayLeaves.jpg');
     this.rockyTexture = new CGFtexture(this, './resources/textures/terrain/rocky.jpg');
+    this.barnFrontTexture = new CGFtexture(this, './resources/textures/barn/barn_front.png');
+    this.barnRedWoodTexture = new CGFtexture(this, './resources/textures/barn/red_barn_wood.png');
+    this.bedTexture = new CGFtexture(this, './resources/textures/wagon/woodBed.jpg');
   }
 
 
@@ -471,12 +496,39 @@ export class MyScene extends CGFscene {
         if (!isIntroActive) {
             this.wagon.update(dt, this.interface);
             
+            // Barn Interaction
+            if (this.barn) {
+                const wagonRadius = 1.6 * this.wagon.scale; // match wagon collision radius
+                const isInside = this.barn.checkWagonIntersection(this.wagon.x, this.wagon.z, wagonRadius);
+                
+                if (isInside && this.wagon.carriedBales.length > 0) {
+                    let totalRestored = 0;
+                    // Copy array to loop since we modify the original
+                    const balesToProcess = [...this.wagon.carriedBales];
+                    for (let bale of balesToProcess) {
+                        this.wagon.hp = Math.min(this.wagon.maxHp, this.wagon.hp + 50);
+                        totalRestored += 50;
+                        this.uiBalesDelivered++;
+                        
+                        // Delete bale and spawn a new one
+                        if (bale.dropAnimator) bale.dropAnimator.disable();
+                        this.replaceBale(bale);
+                    }
+                    this.wagon.carriedBales = [];
+                    this.uiRestored = totalRestored;
+                }
+            }
+
             // Reveal HUD once the intro is over, if the toggle allows it
             if (this.displayHUD && this.hudContainerEl && this.hudContainerEl.style.display === 'none') {
                 this.hudContainerEl.style.display = 'flex';
             } else if (!this.displayHUD && this.hudContainerEl && this.hudContainerEl.style.display !== 'none') {
                 this.hudContainerEl.style.display = 'none';
             }
+            
+            // Sync UI stats
+            this.uiHp = Math.ceil(this.wagon.hp);
+            this.uiScore = Math.floor(this.time);
         } else {
             // During the intro, the terrain image might finish loading async.
             // We need to snap the wagon and horses to the correct height so they aren't buried!
@@ -651,6 +703,7 @@ export class MyScene extends CGFscene {
     }
 
     if (this.displayWagon && this.wagon) this.wagon.display();
+    if (this.barn) this.barn.display();
 
     // Hay bales — two batched passes so we switch shaders twice for the whole
     // bale set instead of twice per bale. Shader switching is one of the most

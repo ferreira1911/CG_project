@@ -183,8 +183,10 @@ export class MyWagon extends CGFobject {
             const minDist = wagonRadius + rockRadius;
             
             if (distSq < minDist * minDist) {
-                // Collision!
-                this.hp = Math.max(0, this.hp - 15);
+                // Collision! Random damage between 5 and 15
+                const dmg = Math.floor(Math.random() * 11) + 5;
+                this.hp = Math.max(0, this.hp - dmg);
+                this.scene.uiDamage = dmg;
                 this.invulnerabilityTimer = 1.0; // 1 second i-frames
                 
                 // Knockback: Reverse speed to give maneuvering room.
