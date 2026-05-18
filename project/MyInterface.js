@@ -48,7 +48,13 @@ export class MyInterface extends CGFinterface {
         genFolder.add(this.scene, 'flowerClusterRadius', 1.5, 12.0, 0.1).name('Group Radius');
         genFolder.add(this.scene, 'scatter').name('Regenerate World');
 
-        // 6. Game Stats
+        // 6. Barn Placement
+        const barnFolder = this.gui.addFolder('Barn Placement');
+        barnFolder.add(this.scene, 'barnPosX', -150, 150, 0.5).name('X Position');
+        barnFolder.add(this.scene, 'barnPosZ', -150, 150, 0.5).name('Z Position');
+        barnFolder.add(this.scene, 'barnYaw', -Math.PI, Math.PI, 0.05).name('Yaw Angle');
+
+        // 7. Game Stats
         const statsFolder = this.gui.addFolder('Game Stats');
         statsFolder.add(this.scene, 'uiHp').name('Current HP').listen();
         statsFolder.add(this.scene, 'uiDamage').name('Inst. Damage').listen();
@@ -56,7 +62,7 @@ export class MyInterface extends CGFinterface {
         statsFolder.add(this.scene, 'uiBalesDelivered').name('Bales Delivered').listen();
         statsFolder.add(this.scene, 'uiScore').name('Score (Time)').listen();
 
-        // 7. Debug Tools
+        // 8. Debug Tools
         const debugFolder = this.gui.addFolder('Tools & Debug');
         debugFolder.add(this.scene, 'displayAxis').name('Display Axis');
         debugFolder.add(this.scene, 'displayHUD').name('Display HUD (HP)');

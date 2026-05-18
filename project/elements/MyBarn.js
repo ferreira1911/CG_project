@@ -34,6 +34,7 @@ export class MyBarn extends CGFobject {
         this.woodTex = textures.wood;
         this.frontTex = textures.front;
         this.roofTex = textures.roof;
+        this.windowTex = textures.window || null;
 
         // Precalculate slope parameters
         const halfWidth = this.width / 2;
@@ -83,9 +84,54 @@ export class MyBarn extends CGFobject {
             this.scene.pushMatrix();
             // Move slightly in front of the +Z face to avoid z-fighting
             this.scene.translate(0, this.height / 2, this.depth / 2 + 0.05);
-            // The image might be upside down if simply mapped, so we scale Y by -1 to flip it right-side up
-            this.scene.scale(this.width, -this.height, 1);
+            // The image might be upside down or mirrored if simply mapped, so we scale Y by -1 and X by -1
+            this.scene.scale(-this.width, -this.height, 1);
             this.frontTex.bind();
+            this.quad.display();
+            this.scene.popMatrix();
+        }
+
+        // --- Side Windows ---
+        if (this.windowTex) {
+            this.windowTex.bind();
+            const windowSize = 2.5;
+
+            // Right wall (+X)
+            this.scene.pushMatrix();
+            this.scene.translate(this.width / 2 + 0.05, this.height * 0.55, 0);
+            this.scene.rotate(Math.PI / 2, 0, 1, 0); // Face outward (+X)
+            // Flip X to match right-side up if needed, or normal scale
+            this.scene.scale(windowSize, windowSize, 1);
+            this.quad.display();
+            this.scene.popMatrix();
+
+            // Left wall (-X)
+            this.scene.pushMatrix();
+            this.scene.translate(-this.width / 2 - 0.05, this.height * 0.55, 0);
+            this.scene.rotate(-Math.PI / 2, 0, 1, 0); // Face outward (-X)
+            this.scene.scale(windowSize, windowSize, 1);
+            this.quad.display();
+            this.scene.popMatrix();
+        }
+
+        // --- Side Windows ---
+        if (this.windowTex) {
+            this.windowTex.bind();
+            const windowSize = 2.5;
+
+            // Right wall (+X)
+            this.scene.pushMatrix();
+            this.scene.translate(this.width / 2 + 0.05, this.height * 0.55, 0);
+            this.scene.rotate(Math.PI / 2, 0, 1, 0); // Face outward (+X)
+            this.scene.scale(-windowSize, -windowSize, 1); // Flip properly
+            this.quad.display();
+            this.scene.popMatrix();
+
+            // Left wall (-X)
+            this.scene.pushMatrix();
+            this.scene.translate(-this.width / 2 - 0.05, this.height * 0.55, 0);
+            this.scene.rotate(-Math.PI / 2, 0, 1, 0); // Face outward (-X)
+            this.scene.scale(-windowSize, -windowSize, 1); // Flip properly
             this.quad.display();
             this.scene.popMatrix();
         }

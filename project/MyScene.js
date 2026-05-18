@@ -109,6 +109,11 @@ export class MyScene extends CGFscene {
     this.uiRestored = 0;
     this.uiBalesDelivered = 0;
     this.uiScore = 0;
+
+    // Barn Placement (GUI)
+    this.barnPosX = -85;
+    this.barnPosZ = -90;
+    this.barnYaw = Math.PI / 2;
   }
 
   scatter() {
@@ -120,22 +125,23 @@ export class MyScene extends CGFscene {
     this.treeZones = [];
     this.grassPatches = [];
 
-    const [wx, wy, wz] = pickSpot(this.terrain, 60, 6);
-    const yaw = r(0, Math.PI * 2);
+    // Place barn in the corner of the base where there is no path, facing the base
+    const barnY = this.terrain.heightAt(this.barnPosX, this.barnPosZ);
     
-    this.barn = new MyBarn(this, wx, wy, wz, yaw, {
+    this.barn = new MyBarn(this, this.barnPosX, barnY, this.barnPosZ, this.barnYaw, {
         wood: this.barnRedWoodTexture,
         front: this.barnFrontTexture,
-        roof: this.barnRedWoodTexture
+        roof: this.barnRedWoodTexture,
+        window: this.barnWindowTexture
     });
 
     const spawnZ = this.barn.areaOffsetZ - 2.5;
-    const cy = Math.cos(yaw);
-    const sy = Math.sin(yaw);
-    const wagonX = wx + spawnZ * sy;
-    const wagonZ = wz + spawnZ * cy;
+    const cy = Math.cos(this.barnYaw);
+    const sy = Math.sin(this.barnYaw);
+    const wagonX = this.barnPosX + spawnZ * sy;
+    const wagonZ = this.barnPosZ + spawnZ * cy;
 
-    this.wagon = new MyWagon(this, wagonX, this.terrain.heightAt(wagonX, wagonZ), wagonZ, yaw, 1.0, this.horseTexture);
+    this.wagon = new MyWagon(this, wagonX, this.terrain.heightAt(wagonX, wagonZ), wagonZ, this.barnYaw, 1.0, this.horseTexture);
 
     // 2. Rocks: baked displaced geometry
     const rockTextures = [this.rockColorMap1, this.rockColorMap2, this.rockColorMap3];
@@ -414,6 +420,7 @@ export class MyScene extends CGFscene {
     this.rockyTexture = new CGFtexture(this, './resources/textures/terrain/rocky.jpg');
     this.barnFrontTexture = new CGFtexture(this, './resources/textures/barn/barn_front.png');
     this.barnRedWoodTexture = new CGFtexture(this, './resources/textures/barn/red_barn_wood.png');
+    this.barnWindowTexture = new CGFtexture(this, './resources/textures/barn/barn_window.png');
     this.bedTexture = new CGFtexture(this, './resources/textures/wagon/woodBed.jpg');
   }
 
@@ -498,6 +505,12 @@ export class MyScene extends CGFscene {
             
             // Barn Interaction
             if (this.barn) {
+                // Apply GUI placement directly for live tuning
+                this.barn.x = this.barnPosX;
+                this.barn.z = this.barnPosZ;
+                this.barn.y = this.terrain.heightAt(this.barnPosX, this.barnPosZ);
+                this.barn.yaw = this.barnYaw;
+
                 const wagonRadius = 1.6 * this.wagon.scale; // match wagon collision radius
                 const isInside = this.barn.checkWagonIntersection(this.wagon.x, this.wagon.z, wagonRadius);
                 
