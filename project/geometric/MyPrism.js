@@ -17,6 +17,7 @@ export class MyPrism extends CGFobject {
         this.vertices = [];
         this.indices = [];
         this.normals = [];
+        this.texCoords = []; // Added texture coordinates array
 
         var ang = 0;
         var alphaAng = 2*Math.PI/this.slices;
@@ -43,7 +44,17 @@ export class MyPrism extends CGFobject {
                 this.vertices.push(caa,saa,zbase)  // bottom left
                 this.vertices.push(ca,sa,ztop);   //top right
                 this.vertices.push(caa,saa,ztop); // top left
+                
+                // Texture coordinates mapped around the prism (U) and along the stacks (V)
+                var uBase = i / this.slices;
+                var uNext = (i + 1) / this.slices;
+                var vBase = s / this.stacks;
+                var vTop = (s + 1) / this.stacks;
 
+                this.texCoords.push(uBase, vBase);    // bottom right
+                this.texCoords.push(uNext, vBase);    // bottom left
+                this.texCoords.push(uBase, vTop);     // top right
+                this.texCoords.push(uNext, vTop);     // top left
                 
                 for (var j =0; j < 4; j++){
                     this.normals.push(nx,ny,nz);

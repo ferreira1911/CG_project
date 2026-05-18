@@ -3,6 +3,8 @@ import { MyUnitCube } from '../geometric/MyUnitCube.js';
 import { MyQuad } from '../geometric/MyQuad.js';
 import { MyGable } from '../geometric/MyGable.js';
 import { MyBarnArea } from './MyBarnArea.js';
+import { MyPrism } from '../geometric/MyPrism.js';
+import { MyCircle } from '../geometric/MyCircle.js';
 
 export class MyBarn extends CGFobject {
     constructor(scene, x, y, z, yaw, textures) {
@@ -21,7 +23,9 @@ export class MyBarn extends CGFobject {
         // Components
         this.body = new MyUnitCube(scene);
         this.quad = new MyQuad(scene);
-        this.gable = new MyGable(scene);
+        // Half prism roof uses a 3-sided prism (triangular)
+        this.roofPrism = new MyPrism(scene, 3, 1);
+        this.roofCap = new MyCircle(scene, 3);
         
         // Circular drop-off area in front of the barn
         this.dropOffRadius = 8;
@@ -136,41 +140,60 @@ export class MyBarn extends CGFobject {
             this.scene.popMatrix();
         }
 
-        // --- A-Frame Roof ---
+        // --- Half-Prism Roof (Triangular) ---
         if (this.roofTex) {
             this.roofTex.bind();
-            // Repeat texture for better look
             this.scene.gl.texParameteri(this.scene.gl.TEXTURE_2D, this.scene.gl.TEXTURE_WRAP_S, this.scene.gl.REPEAT);
             this.scene.gl.texParameteri(this.scene.gl.TEXTURE_2D, this.scene.gl.TEXTURE_WRAP_T, this.scene.gl.REPEAT);
         }
 
-        const halfWidth = this.width / 2;
-        const midY = this.height + this.roofHeight / 2;
+        // A 3-sided prism forms a triangle base.
+        // We rotate it 90 degrees around Z so the point is exactly at the top (Y).
+        // Original triangle base width = Math.sqrt(3) ~ 1.732, height = 1.5.
+        const prismHeight = 1.5;
+        const prismWidth = Math.sqrt(3);
 
-        // Right Slope (+X side)
+        const scaleY = this.roofHeight / prismHeight;
+        const scaleX = (this.width + 0.6) / prismWidth; // 0.6 is overhang
+        const scaleZ = this.depth + 0.4; // 0.4 overhang on Z
+
+        // The base of the triangle is at Y = -0.5 in its local coordinates.
+        // After scaling by scaleY, the base is at Y = -0.5 * scaleY.
+        // We want the base to sit exactly at this.height (top of barn walls).
+        // So: origin_Y + (-0.5 * scaleY) = this.height  =>  origin_Y = this.height + 0.5 * scaleY.
+        const originY = this.height + 0.5 * scaleY;
+
         this.scene.pushMatrix();
-        this.scene.translate(halfWidth / 2, midY, 0); // Midpoint of the right slope
-        this.scene.rotate(-this.slopeAngle, 0, 0, 1);  // Tilt (peak at X=0 is higher than X=6)
-        this.scene.rotate(-Math.PI / 2, 1, 0, 0);     // Lay flat along Z
-        this.scene.scale(this.slopeLength, this.depth + 0.2, 1); // +0.2 for slight overhang
-        this.quad.display();
+        // Move to the calculated origin, pushed back to the rear edge (Prism draws +Z)
+        this.scene.translate(0, originY, -this.depth / 2 - 0.2); // -0.2 to center the Z overhang
         
-        // Render the underside of the roof
-        this.scene.rotate(Math.PI, 0, 1, 0);
-        this.quad.display();
+        // Scale to desired dimensions
+        this.scene.scale(scaleX, scaleY, scaleZ);
+        
+        // Rotate 90 degrees around Z to point the triangle upward
+        this.scene.rotate(Math.PI / 2, 0, 0, 1);
+        
+        // Draw the main roof prism
+        this.roofPrism.display();
+        
+        // Adjust texture wrapping for caps so they look clean
+        if (this.roofTex) {
+            this.scene.gl.texParameteri(this.scene.gl.TEXTURE_2D, this.scene.gl.TEXTURE_WRAP_S, this.scene.gl.CLAMP_TO_EDGE);
+            this.scene.gl.texParameteri(this.scene.gl.TEXTURE_2D, this.scene.gl.TEXTURE_WRAP_T, this.scene.gl.CLAMP_TO_EDGE);
+        }
+
+        // Front Cap
+        this.scene.pushMatrix();
+        this.scene.translate(0, 0, 1); // Top of the prism (Z=1 in local space)
+        this.roofCap.display();
         this.scene.popMatrix();
 
-        // Left Slope (-X side)
+        // Back Cap
         this.scene.pushMatrix();
-        this.scene.translate(-halfWidth / 2, midY, 0); // Midpoint of the left slope
-        this.scene.rotate(this.slopeAngle, 0, 0, 1);  // Tilt opposite
-        this.scene.rotate(-Math.PI / 2, 1, 0, 0);      // Lay flat along Z
-        this.scene.scale(this.slopeLength, this.depth + 0.2, 1);
-        this.quad.display();
-        
-        // Render the underside
-        this.scene.rotate(Math.PI, 0, 1, 0);
-        this.quad.display();
+        this.scene.rotate(Math.PI, 1, 0, 0); // Face backwards without inverting the Z-rotated peak
+        this.roofCap.display();
+        this.scene.popMatrix();
+
         this.scene.popMatrix();
 
         // Restore texture wrapping
@@ -178,24 +201,6 @@ export class MyBarn extends CGFobject {
             this.scene.gl.texParameteri(this.scene.gl.TEXTURE_2D, this.scene.gl.TEXTURE_WRAP_S, this.scene.gl.CLAMP_TO_EDGE);
             this.scene.gl.texParameteri(this.scene.gl.TEXTURE_2D, this.scene.gl.TEXTURE_WRAP_T, this.scene.gl.CLAMP_TO_EDGE);
         }
-
-        // --- Gables (triangles filling the space under the roof) ---
-        if (this.woodTex) this.woodTex.bind();
-        
-        // Front Gable
-        this.scene.pushMatrix();
-        this.scene.translate(0, this.height, this.depth / 2);
-        this.scene.scale(this.width, this.roofHeight, 1);
-        this.gable.display();
-        this.scene.popMatrix();
-
-        // Back Gable
-        this.scene.pushMatrix();
-        this.scene.translate(0, this.height, -this.depth / 2);
-        this.scene.scale(this.width, this.roofHeight, 1);
-        this.scene.rotate(Math.PI, 0, 1, 0); // Face backwards
-        this.gable.display();
-        this.scene.popMatrix();
 
 
         // --- Drop-Off Area ---

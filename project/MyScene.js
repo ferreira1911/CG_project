@@ -131,7 +131,7 @@ export class MyScene extends CGFscene {
     this.barn = new MyBarn(this, this.barnPosX, barnY, this.barnPosZ, this.barnYaw, {
         wood: this.barnRedWoodTexture,
         front: this.barnFrontTexture,
-        roof: this.barnRedWoodTexture,
+        roof: this.darkWoodTexture,
         window: this.barnWindowTexture
     });
 
@@ -422,6 +422,7 @@ export class MyScene extends CGFscene {
     this.barnRedWoodTexture = new CGFtexture(this, './resources/textures/barn/red_barn_wood.png');
     this.barnWindowTexture = new CGFtexture(this, './resources/textures/barn/barn_window.png');
     this.bedTexture = new CGFtexture(this, './resources/textures/wagon/woodBed.jpg');
+    this.darkWoodTexture = new CGFtexture(this, './resources/textures/barn/dark_wood.png');
   }
 
 

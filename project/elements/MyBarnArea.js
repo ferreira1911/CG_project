@@ -1,25 +1,26 @@
 import { CGFobject, CGFappearance } from '../../lib/CGF.js';
-import { MyCircle } from '../geometric/MyCircle.js';
+import { MyCylinder } from '../geometric/MyCylinder.js';
 
 export class MyBarnArea extends CGFobject {
     constructor(scene, radius) {
         super(scene);
         this.radius = radius;
-        this.circle = new MyCircle(scene, 32);
+        // Use a cylinder to create a hollow ring/aura instead of a filled circle
+        this.aura = new MyCylinder(scene, 32, 1);
         
         // Default appearance (not intersected)
         this.idleApp = new CGFappearance(scene);
         this.idleApp.setAmbient(0.3, 0.3, 0.1, 1.0);
         this.idleApp.setDiffuse(0.6, 0.6, 0.2, 0.5); // Yellowish
         this.idleApp.setSpecular(0.1, 0.1, 0.1, 1.0);
-        this.idleApp.setEmission(0.2, 0.2, 0.0, 1.0);
+        this.idleApp.setEmission(0.4, 0.4, 0.0, 1.0);
 
         // Active appearance (intersected)
         this.activeApp = new CGFappearance(scene);
         this.activeApp.setAmbient(0.1, 0.4, 0.1, 1.0);
         this.activeApp.setDiffuse(0.2, 0.8, 0.2, 0.5); // Greenish
         this.activeApp.setSpecular(0.1, 0.1, 0.1, 1.0);
-        this.activeApp.setEmission(0.0, 0.3, 0.0, 1.0);
+        this.activeApp.setEmission(0.0, 0.6, 0.0, 1.0);
 
         this.isIntersected = false;
     }
@@ -34,26 +35,28 @@ export class MyBarnArea extends CGFobject {
             this.idleApp.apply();
         }
 
-        // The circle is in the XY plane by default. We need it on the XZ plane
-        this.scene.rotate(-Math.PI / 2, 1, 0, 0);
-        // Scale to desired radius
-        this.scene.scale(this.radius, this.radius, this.radius);
+        // The cylinder is along the Y axis. We just need to scale it.
+        // Scale X and Z to the radius, and Y to a small height for the aura ring.
+        this.scene.scale(this.radius, 0.5, this.radius);
 
         // Enable blending for transparency
         this.scene.gl.enable(this.scene.gl.BLEND);
         this.scene.gl.blendFunc(this.scene.gl.SRC_ALPHA, this.scene.gl.ONE_MINUS_SRC_ALPHA);
         
-        // Disable depth writing so the circle doesn't cause Z-fighting with the terrain
+        // Disable depth writing so the aura doesn't cause Z-fighting with the terrain
         this.scene.gl.depthMask(false);
+        // Disable culling so the cylinder is visible from outside (CW winding fix)
+        this.scene.gl.disable(this.scene.gl.CULL_FACE);
 
         // Unbind any textures so we just use the material color
         if (this.scene.activeTexture) {
              this.scene.activeTexture.unbind();
         }
 
-        this.circle.display();
+        this.aura.display();
 
         // Restore state
+        this.scene.gl.enable(this.scene.gl.CULL_FACE);
         this.scene.gl.depthMask(true);
         this.scene.gl.disable(this.scene.gl.BLEND);
         
