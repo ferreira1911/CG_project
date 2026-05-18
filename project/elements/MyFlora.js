@@ -140,6 +140,11 @@ export class MyFlora extends CGFobject {
 
     this.x = x; this.y = y; this.z = z;
     this.scale = scale;
+
+    // Physics / Animation state
+    this.fallAngle = 0;
+    this.fallAxis = [1, 0, 0];
+
     this.isTree = isTree;
 
     this.maxDepth = depth;
@@ -414,6 +419,9 @@ export class MyFlora extends CGFobject {
   displayBranches() {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
+    if (this.fallAngle > 0) {
+        this.scene.rotate(this.fallAngle, this.fallAxis[0], this.fallAxis[1], this.fallAxis[2]);
+    }
     this.scene.scale(this.scale, this.scale, this.scale);
 
     const shader = this.scene.branchShader;
@@ -430,6 +438,9 @@ export class MyFlora extends CGFobject {
   displayLeaves() {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
+    if (this.fallAngle > 0) {
+        this.scene.rotate(this.fallAngle, this.fallAxis[0], this.fallAxis[1], this.fallAxis[2]);
+    }
     this.scene.scale(this.scale, this.scale, this.scale);
 
     const shader = this.scene.branchShader;

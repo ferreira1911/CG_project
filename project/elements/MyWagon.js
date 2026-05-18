@@ -168,36 +168,105 @@ export class MyWagon extends CGFobject {
         this.invulnerabilityTimer -= dt;
     }
 
-    // Collision detection with rocks
-    if (this.invulnerabilityTimer <= 0 && this.scene.rocks) {
-        // Approximate wagon bounding radius (tighter hitbox)
+    // Collisions
+    if (this.invulnerabilityTimer <= 0) {
+        // Approximate wagon bounding radius
         const wagonRadius = 1.6 * this.scale;
-        
-        for (const rock of this.scene.rocks) {
-            // Rock radius: conservative bounding circle, tighter than before
-            const rockRadius = Math.max(rock.sx, rock.sz) * 0.5; 
-            
-            const dx = this.x - rock.x;
-            const dz = this.z - rock.z;
-            const distSq = dx * dx + dz * dz;
-            const minDist = wagonRadius + rockRadius;
-            
-            if (distSq < minDist * minDist) {
-                // Collision! Random damage between 5 and 15
-                const dmg = Math.floor(Math.random() * 11) + 5;
-                this.hp = Math.max(0, this.hp - dmg);
-                this.scene.uiDamage = dmg;
-                this.invulnerabilityTimer = 1.0; // 1 second i-frames
+        let collided = false;
+
+        // 1. Rock Collisions
+        if (!collided && this.scene.rocks) {
+            for (const rock of this.scene.rocks) {
+                const rockRadius = Math.max(rock.sx, rock.sz) * 0.5; 
+                const dx = this.x - rock.x;
+                const dz = this.z - rock.z;
                 
-                // Knockback: Reverse speed to give maneuvering room.
-                this.speed = -MAX_SPEED * 0.9; 
-                
-                // Trigger a camera shake on the scene
-                this.scene.cameraShake = 1.0;
-                break; // Only collide with one rock per frame
+                if (dx * dx + dz * dz < (wagonRadius + rockRadius) * (wagonRadius + rockRadius)) {
+                    this._triggerCollisionDamage(5, 15);
+                    collided = true;
+                    break; 
+                }
+            }
+        }
+
+        // 2. Tree Collisions
+        if (!collided && this.scene.treeZones) {
+            for (const zone of this.scene.treeZones) {
+                if (zone.isFallen) continue; // Skip already fallen trees
+
+                const dx = this.x - zone.x;
+                const dz = this.z - zone.z;
+                const distSq = dx * dx + dz * dz;
+                const minDist = wagonRadius + zone.radius;
+
+                if (distSq < minDist * minDist) {
+                    this._triggerCollisionDamage(10, 20);
+                    collided = true;
+
+                    // Trigger Tree Fall Animation
+                    zone.isFallen = true;
+                    if (zone.flora && zone.animator) {
+                        // Calculate impact vector
+                        const impactLength = Math.sqrt(distSq);
+                        let dirX = 1, dirZ = 0;
+                        if (impactLength > 0.001) {
+                            // Direction from wagon TO tree
+                            dirX = -dx / impactLength;
+                            dirZ = -dz / impactLength;
+                        }
+                        
+                        // Cross product of (dirX, 0, dirZ) with UP (0, 1, 0) gives the rotation axis!
+                        // Right-hand rule: axis = cross(impact_dir, UP)
+                        // impact_dir x UP = (dirZ, 0, -dirX)
+                        zone.flora.fallAxis = [dirZ, 0, -dirX];
+                        
+                        zone.animator.enable(this.scene.time);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // 3. Barn Collision (OBB vs Circle)
+        if (!collided && this.scene.barn) {
+            const barn = this.scene.barn;
+            // 1. Vector from barn center to wagon
+            const dx = this.x - barn.x;
+            const dz = this.z - barn.z;
+
+            // 2. Rotate this vector by the INVERSE of the barn's yaw
+            // This brings the wagon's position into the barn's local coordinate space.
+            const cosYaw = Math.cos(-barn.yaw);
+            const sinYaw = Math.sin(-barn.yaw);
+            const localX = dx * cosYaw + dz * sinYaw;
+            const localZ = -dx * sinYaw + dz * cosYaw;
+
+            // 3. Clamp the local position to the barn's extents
+            const halfWidth = barn.width / 2;
+            const halfDepth = barn.depth / 2;
+            
+            let closestX = localX;
+            let closestZ = localZ;
+
+            if (closestX < -halfWidth) closestX = -halfWidth;
+            else if (closestX > halfWidth) closestX = halfWidth;
+
+            if (closestZ < -halfDepth) closestZ = -halfDepth;
+            else if (closestZ > halfDepth) closestZ = halfDepth;
+
+            // 4. Calculate distance from closest point on the barn to the wagon center
+            const distX = localX - closestX;
+            const distZ = localZ - closestZ;
+
+            if (distX * distX + distZ * distZ < wagonRadius * wagonRadius) {
+                // Wagon is intersecting the barn rectangle!
+                this._triggerCollisionDamage(20, 30); // Barn hits hard
+                collided = true;
             }
         }
     }
+
+
 
     // ── Animations ────────────────────────────────────────────────────────────
     if (Math.abs(this.speed) > 0.1) {
@@ -313,6 +382,18 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  _triggerCollisionDamage(minDmg, maxDmg) {
+      const dmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
+      this.hp = Math.max(0, this.hp - dmg);
+      this.scene.uiDamage = dmg;
+      this.invulnerabilityTimer = 1.0; // 1 second i-frames
+      
+      // Knockback: Reverse speed to give maneuvering room.
+      this.speed = -MAX_SPEED * 0.9; 
+      
+      // Trigger a camera shake on the scene
+      this.scene.cameraShake = 1.0;
+  }
   // ── Render ──────────────────────────────────────────────────────────────────
 
   display() {

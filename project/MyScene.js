@@ -7,6 +7,8 @@ import { MyGrass } from "./elements/MyGrass.js";
 import { MyWagon } from "./elements/MyWagon.js";
 import { MyBarn } from "./elements/MyBarn.js";
 import { MyCameraAnimator } from "./animators/MyCameraAnimator.js";
+import { MyHayBaleAnimator } from "./animators/MyHayBaleAnimator.js";
+import { MyTreeAnimator } from "./animators/MyTreeAnimator.js";
 import { MyUnitCube } from "./geometric/MyUnitCube.js";
 import { MyCylinder } from "./geometric/MyCylinder.js";
 import { MyCircle } from "./geometric/MyCircle.js";
@@ -248,13 +250,24 @@ export class MyScene extends CGFscene {
 
       const ty = this.terrain.heightAt(tx, tz);
       const scale = r(2, 3);
-      this.floras.push(new MyFlora(
+      const treeFlora = new MyFlora(
         this, tx, ty, tz, scale,
         3, 28, 1.6, 0.78, 0.28, 0.72, 22,
         1, 0.9, 30, 0.45,
         null, this.barkTexture, r(0, 100), true
-      ));
-      this.treeZones.push({ x: tx, z: tz, radius: 2.0 * scale });
+      );
+      this.floras.push(treeFlora);
+      
+      const treeAnimator = new MyTreeAnimator(treeFlora, 1.5);
+      
+      this.treeZones.push({ 
+          x: tx, 
+          z: tz, 
+          radius: 2.0 * scale,
+          flora: treeFlora,
+          animator: treeAnimator,
+          isFallen: false 
+      });
     }
 
     // Feed tree trunk positions to the terrain shader so the decay-leaves
@@ -503,6 +516,29 @@ export class MyScene extends CGFscene {
     if (this.wagon) {
         if (!isIntroActive) {
             this.wagon.update(dt, this.interface);
+            
+            // Update tree falling animators and clean up fallen trees
+            if (this.treeZones) {
+                // Iterate backwards to allow safe removal from the array
+                for (let i = this.treeZones.length - 1; i >= 0; i--) {
+                    const zone = this.treeZones[i];
+                    
+                    if (zone.animator && zone.animator.active) {
+                        zone.animator.update(this.time);
+                    } else if (zone.isFallen) {
+                        // The tree has finished falling. Start the disappear timer.
+                        zone.disappearTimer = (zone.disappearTimer || 0) + dt;
+                        if (zone.disappearTimer > 2.0) {
+                            // Remove the tree's physical body from the rendering list
+                            const fIndex = this.floras.indexOf(zone.flora);
+                            if (fIndex > -1) this.floras.splice(fIndex, 1);
+                            
+                            // Remove the tree zone entirely so it stops processing
+                            this.treeZones.splice(i, 1);
+                        }
+                    }
+                }
+            }
             
             // Barn Interaction
             if (this.barn) {
