@@ -107,6 +107,7 @@ export class MyScene extends CGFscene {
     this.scoreValEl = document.getElementById('score-val');
     this.balesValEl = document.getElementById('bales-val');
     this.floatingTextAnchorEl = document.getElementById('floating-text-anchor');
+    this.gameOverEl = document.getElementById('game-over-screen');
     
     this.lastRenderedHp = -1; // Force first update
     this.lastRenderedScore = -1;
@@ -118,6 +119,15 @@ export class MyScene extends CGFscene {
     this.uiRestored = 0;
     this.uiBalesDelivered = 0;
     this.uiScore = 0;
+    this.gameOver = false;
+    
+    // Native key listener for Game Over restart — CGF loses keyboard focus
+    // when a full-screen HTML overlay is on top of the canvas.
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'KeyR' && this.gameOver) {
+            this.restartGame();
+        }
+    });
 
     // Barn Placement (GUI)
     this.barnPosX = -85;
@@ -541,6 +551,11 @@ export class MyScene extends CGFscene {
 
     if (this.wagon) {
         if (!isIntroActive) {
+            // If game over, block all gameplay — restart is handled by native keydown listener in init()
+            if (this.gameOver) {
+                return;
+            }
+            
             this.wagon.update(dt, this.interface);
             
             // Update tree falling animators and clean up fallen trees
@@ -615,6 +630,13 @@ export class MyScene extends CGFscene {
                 this.spawnFloatingText("+" + this.uiRestored, "#44ff44");
                 this.uiRestored = 0;
             }
+            
+            // Game Over check — must be AFTER HP is synced
+            if (this.wagon.hp <= 0 && !this.gameOver) {
+                this.wagon.hp = 0;
+                this.gameOver = true;
+                if (this.gameOverEl) this.gameOverEl.style.display = 'flex';
+            }
         } else {
             // During the intro, the terrain image might finish loading async.
             // We need to snap the wagon and horses to the correct height so they aren't buried!
@@ -677,6 +699,49 @@ export class MyScene extends CGFscene {
           if (el.parentNode) el.parentNode.removeChild(el);
       }, 1500);
   }
+
+  /**
+   * Resets all game state to starting values, hides the game over screen.
+   */
+  restartGame() {
+      if (!this.wagon) return;
+
+      // Restore health
+      this.wagon.hp = this.wagon.maxHp;
+
+      // Reset velocity / momentum
+      this.wagon.speed = 0;
+      this.wagon.steer = 0;
+      this.wagon.carriedBales = [];
+
+      // Teleport wagon back to its start position (near the barn)
+      const spawnOffset = 10;
+      const spawnCy = Math.cos(this.barnYaw);
+      const spawnSy = Math.sin(this.barnYaw);
+      this.wagon.x = this.barnPosX + spawnSy * spawnOffset;
+      this.wagon.z = this.barnPosZ + spawnCy * spawnOffset;
+      this.wagon.y = this.terrain ? this.terrain.heightAt(this.wagon.x, this.wagon.z) : 0;
+      this.wagon.yaw = this.barnYaw;
+      this.wagon._updateHorsePositions();
+
+      // Reset UI counters
+      this.uiBalesDelivered = 0;
+      this.uiScore = 0;
+      this.uiDamage = 0;
+      this.uiRestored = 0;
+      this.lastRenderedBales = -1;
+      this.lastRenderedScore = -1;
+      this.lastRenderedHp = -1;
+
+      // Reset score timer
+      this.startTime = undefined;
+      this.time = 0;
+
+      // Hide game over screen
+      this.gameOver = false;
+      if (this.gameOverEl) this.gameOverEl.style.display = 'none';
+  }
+
 
   display() {
     // Update intro animation if active
