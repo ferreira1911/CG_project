@@ -374,15 +374,17 @@ export class MyScene extends CGFscene {
    */
   spawnHayBale() {
     let bx, bz;
+    let attempts = 0;
     do {
       bx = r(-80, 80);
       bz = r(-80, 80);
-    } while (!this.terrain.isPathClear(bx, bz, 2.0));
+      attempts++;
+    } while (!this.terrain.isPathClear(bx, bz, 2.0) && attempts < 50);
     
     const by    = this.terrain.heightAt(bx, bz);
     const rotY  = r(0, Math.PI * 2);     // Random orientation
     const scale = r(0.8, 1.3);           // Slight size variation
-    this.haybales.push(new MyHayBale(this, bx, by, bz, rotY, scale, this.hayTexture));
+    this.haybales.push(new MyHayBale(this, bx, by, bz, rotY, scale, this.haybaleMaterial));
   }
 
   /**
@@ -442,6 +444,15 @@ export class MyScene extends CGFscene {
     this.barnWindowTexture = new CGFtexture(this, './resources/textures/barn/barn_window.png');
     this.bedTexture = new CGFtexture(this, './resources/textures/wagon/woodBed.jpg');
     this.darkWoodTexture = new CGFtexture(this, './resources/textures/barn/dark_wood.png');
+    
+    // Shared material for all haybales to prevent WebGL stutter during spawns
+    this.haybaleMaterial = new CGFappearance(this);
+    this.haybaleMaterial.setAmbient(0.45, 0.35, 0.10, 1.0);
+    this.haybaleMaterial.setDiffuse(0.80, 0.65, 0.20, 1.0);
+    this.haybaleMaterial.setSpecular(0.05, 0.05, 0.02, 1.0);
+    this.haybaleMaterial.setShininess(8);
+    this.haybaleMaterial.setTexture(this.hayTexture);
+    this.haybaleMaterial.setTextureWrap('REPEAT', 'REPEAT');
   }
 
 

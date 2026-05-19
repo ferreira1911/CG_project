@@ -15,14 +15,16 @@ const HEIGHT = 1.3;  // up       (y)
  *   dropAnimator active   → bale is falling from bed to ground
  */
 export class MyHayBale extends CGFobject {
-    constructor(scene, x, y, z, rotY = 0, scale = 1.0, texture = null) {
+    constructor(scene, x, y, z, rotY = 0, scale = 1.0, material = null) {
         super(scene);
         this.x = x;
         this.y = y;
         this.z = z;
         this.rotY    = rotY;
         this.scale   = scale;
-        this.texture = texture;
+        
+        // Use a shared material provided by the scene to prevent WebGL stutter on spawn
+        this.mat = material;
 
         this.groundY = y;
         this.renderY = y;
@@ -33,23 +35,7 @@ export class MyHayBale extends CGFobject {
         this.LENGTH = LENGTH;
         this.WIDTH  = WIDTH;
         this.HEIGHT = HEIGHT;
-        // Back-compat alias: the wagon's carried-bale math still uses RADIUS
-        // as the half-height ground-clearance offset.
         this.RADIUS = HEIGHT * 0.5;
-
-        this._initMaterial();
-    }
-
-    _initMaterial() {
-        this.mat = new CGFappearance(this.scene);
-        this.mat.setAmbient(0.45, 0.35, 0.10, 1.0);
-        this.mat.setDiffuse(0.80, 0.65, 0.20, 1.0);
-        this.mat.setSpecular(0.05, 0.05, 0.02, 1.0);
-        this.mat.setShininess(8);
-        if (this.texture) {
-            this.mat.setTexture(this.texture);
-            this.mat.setTextureWrap('REPEAT', 'REPEAT');
-        }
     }
 
     /**
