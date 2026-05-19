@@ -103,7 +103,13 @@ export class MyScene extends CGFscene {
     
     this.hpNumEl = document.getElementById('hp-number');
     this.hpBarEl = document.getElementById('hp-bar');
+    this.scoreValEl = document.getElementById('score-val');
+    this.balesValEl = document.getElementById('bales-val');
+    this.floatingTextAnchorEl = document.getElementById('floating-text-anchor');
+    
     this.lastRenderedHp = -1; // Force first update
+    this.lastRenderedScore = -1;
+    this.lastRenderedBales = -1;
 
     // GUI Stats variables
     this.uiHp = 150;
@@ -579,6 +585,16 @@ export class MyScene extends CGFscene {
             // Sync UI stats
             this.uiHp = Math.ceil(this.wagon.hp);
             this.uiScore = Math.floor(this.time);
+            
+            // Trigger floating text for damage/healing
+            if (this.uiDamage > 0) {
+                this.spawnFloatingText("-" + this.uiDamage, "#ff4444");
+                this.uiDamage = 0;
+            }
+            if (this.uiRestored > 0) {
+                this.spawnFloatingText("+" + this.uiRestored, "#44ff44");
+                this.uiRestored = 0;
+            }
         } else {
             // During the intro, the terrain image might finish loading async.
             // We need to snap the wagon and horses to the correct height so they aren't buried!
@@ -606,7 +622,40 @@ export class MyScene extends CGFscene {
                 this.hpBarEl.style.background = 'linear-gradient(90deg, #e53935, #ef5350)';
             }
         }
+        
+        // Sync Score and Bales
+        if (this.uiScore !== this.lastRenderedScore && this.scoreValEl) {
+            this.lastRenderedScore = this.uiScore;
+            this.scoreValEl.innerText = this.uiScore;
+        }
+        if (this.uiBalesDelivered !== this.lastRenderedBales && this.balesValEl) {
+            this.lastRenderedBales = this.uiBalesDelivered;
+            this.balesValEl.innerText = this.uiBalesDelivered;
+        }
     }
+  }
+
+  /**
+   * Spawns animated floating text above the health bar.
+   */
+  spawnFloatingText(text, color) {
+      if (!this.floatingTextAnchorEl) return;
+      
+      const el = document.createElement('div');
+      el.className = 'floating-text';
+      el.innerText = text;
+      el.style.color = color;
+      
+      // Add slight random horizontal offset so numbers don't perfectly overlap
+      const offsetX = (Math.random() - 0.5) * 40;
+      el.style.left = `calc(50% + ${offsetX}px)`;
+      
+      this.floatingTextAnchorEl.appendChild(el);
+      
+      // Clean up DOM after animation finishes
+      setTimeout(() => {
+          if (el.parentNode) el.parentNode.removeChild(el);
+      }, 1500);
   }
 
   display() {
