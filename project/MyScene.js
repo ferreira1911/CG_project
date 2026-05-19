@@ -3,6 +3,7 @@ import { MyPanorama } from "./elements/MyPanorama.js";
 import { MyTerrain } from "./elements/MyTerrain.js";
 import { MyRock } from "./elements/MyRock.js";
 import { MyFlora } from "./elements/MyFlora.js";
+import { MyFloraBatch } from "./elements/MyFloraBatch.js";
 import { MyGrass } from "./elements/MyGrass.js";
 import { MyWagon } from "./elements/MyWagon.js";
 import { MyBarn } from "./elements/MyBarn.js";
@@ -226,13 +227,21 @@ export class MyScene extends CGFscene {
          // Lowered scale and trunkLength slightly so flowers sit just at or slightly below the grass line (1.1 - 1.3)
          const scale = r(0.45, 0.8);
          
-         this.floras.push(new MyFlora(
+         const newFlower = new MyFlora(
             this, fx, fy, fz, scale,
             3, 30, this.flowerStemLength, 0.55, 0.05, 0.6, 15,
             this.flowerPetals | 0, this.flowerPetalSize, 35, 0.3,
-            null, null, r(0, 100), false, clusterColor
-         ));
+            null, null, r(0, 100), false, clusterColor, true // deferGLInit
+         );
+         if (!this.flowersToBatch) this.flowersToBatch = [];
+         this.flowersToBatch.push(newFlower);
       }
+    }
+    
+    // Batch all flowers into a single VBO to reduce draw calls
+    if (this.flowersToBatch && this.flowersToBatch.length > 0) {
+        this.flowerBatch = new MyFloraBatch(this, this.flowersToBatch);
+        this.flowersToBatch = null; // Free JS memory
     }
 
     // 4b. Trees — a few L-system conifers. Pushed into `floras` so they render
@@ -789,24 +798,34 @@ export class MyScene extends CGFscene {
     }
 
     // Flora Batch Rendering
-    if (this.displayFlora && this.floras.length > 0) {
+    if (this.displayFlora) {
       this.setActiveShader(this.branchShader);
       
       this.branchShader.setUniformsValues({ uLength: 1.0 });
-      for (const f of this.floras) {
-          const dx = f.x - cx;
-          const dz = f.z - cz;
-          if (dx * dx + dz * dz < DRAW_DIST_SQ) f.displayBranches();
+      // Draw dynamic individual trees
+      if (this.floras.length > 0) {
+          for (const f of this.floras) {
+              const dx = f.x - cx;
+              const dz = f.z - cz;
+              if (dx * dx + dz * dz < DRAW_DIST_SQ) f.displayBranches();
+          }
       }
+      // Draw batched flowers in 1 draw call!
+      if (this.flowerBatch) this.flowerBatch.displayBranches();
 
       this.gl.disable(this.gl.CULL_FACE);
       this.branchShader.setUniformsValues({ uLength: 0.5 });
 
-      for (const f of this.floras) {
-          const dx = f.x - cx;
-          const dz = f.z - cz;
-          if (dx * dx + dz * dz < DRAW_DIST_SQ) f.displayLeaves();
+      // Draw dynamic individual trees
+      if (this.floras.length > 0) {
+          for (const f of this.floras) {
+              const dx = f.x - cx;
+              const dz = f.z - cz;
+              if (dx * dx + dz * dz < DRAW_DIST_SQ) f.displayLeaves();
+          }
       }
+      // Draw batched flowers in 1 draw call!
+      if (this.flowerBatch) this.flowerBatch.displayLeaves();
       
       this.gl.enable(this.gl.CULL_FACE);
       this.setActiveShader(this.defaultShader);

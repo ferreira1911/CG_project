@@ -135,7 +135,8 @@ export class MyFlora extends CGFobject {
               branchTexture,
               seed,
               isTree = false,
-              petalColor = [0.8, 0.2, 0.2]) {
+              petalColor = [0.8, 0.2, 0.2],
+              deferGLInit = false) {
     super(scene);
 
     this.x = x; this.y = y; this.z = z;
@@ -207,13 +208,15 @@ export class MyFlora extends CGFobject {
     
     this._bake(this.maxDepth, this.trunkLength, this.initialThickness);
 
-    this.branchMesh = new SubMesh(scene, this._bv, this._bn, this._bi, this._bt);
-    this.petalMesh  = this._pi.length > 0 ? new SubMesh(scene, this._pv, this._pn, this._pi, this._pt) : null;
-    this.centerMesh = this._ci.length > 0 ? new SubMesh(scene, this._cv, this._cn, this._ci, this._ct) : null;
+    if (!deferGLInit) {
+        this.branchMesh = new SubMesh(scene, this._bv, this._bn, this._bi, this._bt);
+        this.petalMesh  = this._pi.length > 0 ? new SubMesh(scene, this._pv, this._pn, this._pi, this._pt) : null;
+        this.centerMesh = this._ci.length > 0 ? new SubMesh(scene, this._cv, this._cn, this._ci, this._ct) : null;
 
-    this._bv = this._bn = this._bi = this._bt = null;
-    this._pv = this._pn = this._pi = this._pt = null;
-    this._cv = this._cn = this._ci = this._ct = null;
+        this._bv = this._bn = this._bi = this._bt = null;
+        this._pv = this._pn = this._pi = this._pt = null;
+        this._cv = this._cn = this._ci = this._ct = null;
+    }
 
     // Cache diffuse color slices so display() never allocates on the hot path.
     this._branchColor = this.branchApp.diffuse.slice(0, 3);
