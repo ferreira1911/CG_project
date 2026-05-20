@@ -93,13 +93,16 @@ export class MyScene extends CGFscene {
 
     this.freeCamera  = false;  // follow-cam by default; toggle in GUI
 
-    // Start 120 units high. Hold for 4 seconds (panorama shot), then drop over 4 seconds.
+    // Intro camera animator — starts from 120 units high, swoops down.
+    // NOT auto-started; startGame() triggers it when the player dismisses the menu.
     this.introAnimator = new MyCameraAnimator(this, 120, 4.0, 4.0);
+    this.introCameraOffset = 120; // Initialize high so the camera is in the sky during the menu
 
     this.setUpdatePeriod(16);  // ~60 Hz physics/input tick
 
     // Cache HUD DOM elements for performance
     this.hudContainerEl = document.getElementById('hud-container');
+    // HUD starts hidden; shown only after menu is dismissed
     if (this.hudContainerEl) this.hudContainerEl.style.display = 'none';
     
     this.hpNumEl = document.getElementById('hp-number');
@@ -120,10 +123,17 @@ export class MyScene extends CGFscene {
     this.uiBalesDelivered = 0;
     this.uiScore = 0;
     this.gameOver = false;
+    this.menuActive = true;
+    this.menuEl = document.getElementById('main-menu');
     
-    // Native key listener for Game Over restart — CGF loses keyboard focus
-    // when a full-screen HTML overlay is on top of the canvas.
+    // Native key listeners — HTML overlays steal focus from CGF canvas
     document.addEventListener('keydown', (e) => {
+        // SPACE dismisses the main menu and begins the game
+        if (e.code === 'Space' && this.menuActive) {
+            e.preventDefault();
+            this.startGame();
+        }
+        // R restarts after game over
         if (e.code === 'KeyR' && this.gameOver) {
             this.restartGame();
         }
@@ -551,8 +561,8 @@ export class MyScene extends CGFscene {
 
     if (this.wagon) {
         if (!isIntroActive) {
-            // If game over, block all gameplay — restart is handled by native keydown listener in init()
-            if (this.gameOver) {
+            // If game over or menu is active, block all gameplay updates
+            if (this.gameOver || this.menuActive) {
                 return;
             }
             
@@ -704,6 +714,35 @@ export class MyScene extends CGFscene {
       setTimeout(() => {
           if (el.parentNode) el.parentNode.removeChild(el);
       }, 1500);
+  }
+
+  /**
+   * Called when the player presses SPACE to dismiss the main menu.
+   */
+  startGame() {
+      if (!this.menuActive) return;
+      
+      this.menuActive = false;
+      
+      // Fade out menu
+      if (this.menuEl) {
+          this.menuEl.classList.add('menu-fade-out');
+          setTimeout(() => {
+              this.menuEl.style.display = 'none';
+          }, 600); // matches CSS animation duration
+      }
+      
+      // Reset score timer so it starts from 0 when gameplay begins
+      // Note: we can't easily reset `t` because it comes from requestAnimationFrame,
+      // but setting startTime = undefined forces update() to re-anchor it on the next frame.
+      this.startTime = undefined;
+      this.time = 0;
+      
+      // Trigger the intro camera animator swooping down
+      if (this.introAnimator) {
+          // Because we just reset this.time to 0, we pass 0 as the current time
+          this.introAnimator.enable(0);
+      }
   }
 
   /**

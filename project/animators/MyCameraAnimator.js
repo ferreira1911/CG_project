@@ -8,8 +8,9 @@ export class MyCameraAnimator extends MyAnimator {
      * @param {number} delaySecs - How long to hold the initial height before dropping
      */
     constructor(scene, startYOffset, dropDurationSecs, delaySecs = 0) {
-        // Total active time of this animator is the delay plus the drop time
-        super(startYOffset, 0, dropDurationSecs + delaySecs, false, true);
+        // Total active time of this animator is the delay plus the drop time.
+        // It starts INACTIVE so it can be triggered by the main menu SPACE press.
+        super(startYOffset, 0, dropDurationSecs + delaySecs, false, false);
         this.scene = scene;
         this.dropDurationSecs = dropDurationSecs;
         this.delaySecs = delaySecs;
