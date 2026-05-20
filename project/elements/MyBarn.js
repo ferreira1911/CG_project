@@ -68,6 +68,20 @@ export class MyBarn extends CGFobject {
         return this.area.isIntersected;
     }
 
+    /**
+     * Returns true if a world-space point (x, z) is inside the drop-off circle.
+     * Used to detect whether a dropped bale landed inside the barn delivery zone.
+     */
+    checkPointInDropOff(x, z) {
+        const cy = Math.cos(this.yaw);
+        const sy = Math.sin(this.yaw);
+        const areaWorldX = this.x + this.areaOffsetZ * sy;
+        const areaWorldZ = this.z + this.areaOffsetZ * cy;
+        const dx = x - areaWorldX;
+        const dz = z - areaWorldZ;
+        return (dx * dx + dz * dz) < (this.dropOffRadius * this.dropOffRadius);
+    }
+
     display() {
         this.scene.pushMatrix();
         this.scene.translate(this.x, this.y, this.z);

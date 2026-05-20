@@ -65,7 +65,7 @@ export class MyScene extends CGFscene {
     this._scattered = false;
 
     this.displayAxis = false;
-    this.displayHUD = false;
+    this.displayHUD = true;
     this.displayWagon = true;
     this.displayFlora = true;
     this.displayArrows = true;
@@ -581,33 +581,39 @@ export class MyScene extends CGFscene {
                 }
             }
             
-            // Barn Interaction
+            // Barn: keep position in sync with GUI sliders
             if (this.barn) {
-                // Apply GUI placement directly for live tuning
                 this.barn.x = this.barnPosX;
                 this.barn.z = this.barnPosZ;
                 this.barn.y = this.terrain.heightAt(this.barnPosX, this.barnPosZ);
                 this.barn.yaw = this.barnYaw;
 
-                const wagonRadius = 1.6 * this.wagon.scale; // match wagon collision radius
-                const isInside = this.barn.checkWagonIntersection(this.wagon.x, this.wagon.z, wagonRadius);
-                
-                if (isInside && this.wagon.carriedBales.length > 0) {
-                    let totalRestored = 0;
-                    // Copy array to loop since we modify the original
-                    const balesToProcess = [...this.wagon.carriedBales];
-                    for (let bale of balesToProcess) {
+                // Update drop-off zone highlight so it glows when wagon is near
+                const wagonRadius = 1.6 * this.wagon.scale;
+                this.barn.checkWagonIntersection(this.wagon.x, this.wagon.z, wagonRadius);
+
+                // --- Drop-to-Deliver: check every bale that just landed ---
+                // A bale sets _justLanded = true for exactly one frame when its
+                // drop animation finishes. We test whether it landed inside the
+                // barn drop-off circle and process the delivery if so.
+                let totalRestored = 0;
+                for (let i = this.haybales.length - 1; i >= 0; i--) {
+                    const bale = this.haybales[i];
+                    if (!bale._justLanded) continue;
+                    bale._justLanded = false; // Consume the flag immediately
+
+                    if (this.barn.checkPointInDropOff(bale.x, bale.z)) {
+                        // Bale landed inside the barn — deliver it!
                         this.wagon.hp = Math.min(this.wagon.maxHp, this.wagon.hp + 50);
                         totalRestored += 50;
                         this.uiBalesDelivered++;
-                        
-                        // Delete bale and spawn a new one
+
+                        // Remove delivered bale and spawn a fresh one elsewhere
                         if (bale.dropAnimator) bale.dropAnimator.disable();
                         this.replaceBale(bale);
                     }
-                    this.wagon.carriedBales = [];
-                    this.uiRestored = totalRestored;
                 }
+                if (totalRestored > 0) this.uiRestored = totalRestored;
             }
 
             // Reveal HUD once the intro is over, if the toggle allows it

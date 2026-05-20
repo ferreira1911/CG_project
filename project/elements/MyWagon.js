@@ -376,6 +376,8 @@ export class MyWagon extends CGFobject {
                 if (!bale.dropAnimator.active) {
                     bale.isPickedUp = false;
                     bale.renderY    = bale.groundY;
+                    // Signal to MyScene that this bale just touched down
+                    bale._justLanded = true;
                 }
             }
         }
