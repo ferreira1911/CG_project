@@ -95,8 +95,8 @@ export class MyScene extends CGFscene {
 
     // Intro camera animator — starts from 120 units high, swoops down.
     // NOT auto-started; startGame() triggers it when the player dismisses the menu.
-    this.introAnimator = new MyCameraAnimator(this, 120, 4.0, 4.0);
-    this.introCameraOffset = 120; // Initialize high so the camera is in the sky during the menu
+    this.introAnimator = new MyCameraAnimator(this, 60, 4.0, 4.0);
+    this.introCameraOffset = 60; // Initialize high so the camera is in the sky during the menu
 
     this.setUpdatePeriod(16);  // ~60 Hz physics/input tick
 
