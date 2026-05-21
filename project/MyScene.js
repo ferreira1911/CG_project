@@ -137,6 +137,12 @@ export class MyScene extends CGFscene {
         if (e.code === 'KeyR' && this.gameOver) {
             this.restartGame();
         }
+        // F toggle free camera mode
+        if (e.code === 'KeyF' && !this.freeCamera) {
+            this.freeCamera = true;
+        }else if (e.code === 'KeyF' && this.freeCamera) {
+            this.freeCamera = false;
+        }
     });
 
     // Barn Placement (GUI)
