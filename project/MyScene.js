@@ -333,7 +333,12 @@ export class MyScene extends CGFscene {
       uTime:     0,
       uWindAmp:  this.windAmp,
       uWindFreq: this.windFreq,
-      uBladeHeight: 1.3 * 1.3
+      uBladeHeight: 1.3 * 1.3,
+      uHorsePos: [-1000.0, -1000.0],
+      uWheelPos0: [-1000.0, -1000.0],
+      uWheelPos1: [-1000.0, -1000.0],
+      uWheelPos2: [-1000.0, -1000.0],
+      uWheelPos3: [-1000.0, -1000.0]
     });
 
     // 6. Generate Grass Patches
@@ -552,10 +557,44 @@ export class MyScene extends CGFscene {
         const windGust   = 0.6 + 0.4 * Math.sin(this.time * 1.1 + 1.3);      // subtle irregular beat (never drops to 0)
         const liveAmp    = this.windAmp * windBreath * windGust;               // peak = windAmp, calm pockets near 0
 
+        let pHorse = [-1000.0, -1000.0];
+        let pW0 = [-1000.0, -1000.0];
+        let pW1 = [-1000.0, -1000.0];
+        let pW2 = [-1000.0, -1000.0];
+        let pW3 = [-1000.0, -1000.0];
+        
+        if (this.wagon && this.wagon.horses && this.wagon.horses.length > 0) {
+            pHorse = [this.wagon.horses[0].x, this.wagon.horses[0].z];
+            
+            const cy = Math.cos(this.wagon.yaw);
+            const sy = Math.sin(this.wagon.yaw);
+            
+            // Local wheel offsets matching MyWagon wheel placements
+            const wx = 8.0 * 0.35 * this.wagon.scale; // BED_LENGTH * 0.35
+            const wz = (4.0 * 0.5 + 0.22 * 0.5 + 0.02) * this.wagon.scale; // BED_WIDTH/2 + THICKNESS/2
+            
+            // Helper to compute world XZ from wagon-local XZ
+            const getWorldXZ = (lx, lz) => {
+                const rx = lx * cy + lz * sy;
+                const rz = -lx * sy + lz * cy;
+                return [this.wagon.x + rx, this.wagon.z + rz];
+            };
+            
+            pW0 = getWorldXZ(wx, wz);   // Front Left
+            pW1 = getWorldXZ(wx, -wz);  // Front Right
+            pW2 = getWorldXZ(-wx, wz);  // Back Left
+            pW3 = getWorldXZ(-wx, -wz); // Back Right
+        }
+
         this.grassShader.setUniformsValues({ 
             uTime: this.time,
             uWindAmp: liveAmp,
-            uWindFreq: this.windFreq
+            uWindFreq: this.windFreq,
+            uHorsePos: pHorse,
+            uWheelPos0: pW0,
+            uWheelPos1: pW1,
+            uWheelPos2: pW2,
+            uWheelPos3: pW3
         });
     }
     
