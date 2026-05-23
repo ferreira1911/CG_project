@@ -158,9 +158,11 @@ export class MyWagon extends CGFobject {
       this.y = this.scene.terrain.heightAt(this.x, this.z);
 
     // ── HP & Collisions ───────────────────────────────────────────────────────
-    // Passive damage (-1 HP per second)
+    // Passive damage (-1 HP per second, increasing over time for difficulty scaling)
     if (this.hp > 0) {
-        this.hp = Math.max(0, this.hp - 1.0 * dt);
+        // Option A: Increase drain by 0.5 HP/s every 30 seconds of score
+        const difficultyMultiplier = 1.0 + Math.floor((this.scene.uiScore || 0) / 30) * 0.5;
+        this.hp = Math.max(0, this.hp - (1.0 * difficultyMultiplier) * dt);
     }
 
     // Invulnerability timer

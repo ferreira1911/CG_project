@@ -122,6 +122,7 @@ export class MyScene extends CGFscene {
     this.uiRestored = 0;
     this.uiBalesDelivered = 0;
     this.uiScore = 0;
+    this.gameplayTime = 0;
     this.gameOver = false;
     this.menuActive = true;
     this.menuEl = document.getElementById('main-menu');
@@ -611,6 +612,8 @@ export class MyScene extends CGFscene {
                 return;
             }
             
+            this.gameplayTime += dt;
+            
             this.wagon.update(dt, this.interface);
             
             // Update tree falling animators and clean up fallen trees
@@ -680,7 +683,7 @@ export class MyScene extends CGFscene {
             
             // Sync UI stats
             this.uiHp = Math.ceil(this.wagon.hp);
-            this.uiScore = Math.floor(this.time);
+            this.uiScore = Math.floor(this.gameplayTime);
             
             // Trigger floating text for damage/healing
             if (this.uiDamage > 0) {
@@ -777,16 +780,13 @@ export class MyScene extends CGFscene {
           }, 600); // matches CSS animation duration
       }
       
-      // Reset score timer so it starts from 0 when gameplay begins
-      // Note: we can't easily reset `t` because it comes from requestAnimationFrame,
-      // but setting startTime = undefined forces update() to re-anchor it on the next frame.
-      this.startTime = undefined;
-      this.time = 0;
+      // Reset gameplay timer so score starts from 0 when gameplay begins
+      this.gameplayTime = 0;
       
       // Trigger the intro camera animator swooping down
       if (this.introAnimator) {
-          // Because we just reset this.time to 0, we pass 0 as the current time
-          this.introAnimator.enable(0);
+          // Pass current time to animator
+          this.introAnimator.enable(this.time);
       }
   }
 
@@ -824,8 +824,7 @@ export class MyScene extends CGFscene {
       this.lastRenderedHp = -1;
 
       // Reset score timer
-      this.startTime = undefined;
-      this.time = 0;
+      this.gameplayTime = 0;
 
       // Hide game over screen
       this.gameOver = false;
