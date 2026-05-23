@@ -115,6 +115,7 @@ export class MyScene extends CGFscene {
     this.lastRenderedHp = -1; // Force first update
     this.lastRenderedScore = -1;
     this.lastRenderedBales = -1;
+    this.lastRenderedCarried = -1;
 
     // GUI Stats variables
     this.uiHp = 150;
@@ -734,9 +735,11 @@ export class MyScene extends CGFscene {
             this.lastRenderedScore = this.uiScore;
             this.scoreValEl.innerText = this.uiScore;
         }
-        if (this.uiBalesDelivered !== this.lastRenderedBales && this.balesValEl) {
+        const carriedCount = this.wagon.carriedBales.length;
+        if ((this.uiBalesDelivered !== this.lastRenderedBales || carriedCount !== this.lastRenderedCarried) && this.balesValEl) {
             this.lastRenderedBales = this.uiBalesDelivered;
-            this.balesValEl.innerText = this.uiBalesDelivered;
+            this.lastRenderedCarried = carriedCount;
+            this.balesValEl.innerText = this.uiBalesDelivered + carriedCount;
         }
     }
   }
