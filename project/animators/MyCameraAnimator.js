@@ -1,40 +1,27 @@
 import { MyAnimator } from './MyAnimator.js';
 
+// Intro camera drop. Holds at startYOffset for delaySecs, then drops to 0
+// over dropDurationSecs with an easeOutCubic so the camera glides into
+// place instead of slamming down. Drives scene.introCameraOffset, which the
+// follow-cam in MyScene reads to compute its world position.
 export class MyCameraAnimator extends MyAnimator {
-    /**
-     * @param {Object} scene - The MyScene instance
-     * @param {number} startYOffset - How high up the camera starts
-     * @param {number} dropDurationSecs - Duration of the actual drop animation
-     * @param {number} delaySecs - How long to hold the initial height before dropping
-     */
-    constructor(scene, startYOffset, dropDurationSecs, delaySecs = 0) {
-        // Total active time of this animator is the delay plus the drop time.
-        // It starts INACTIVE so it can be triggered by the main menu SPACE press.
-        super(startYOffset, 0, dropDurationSecs + delaySecs, false, false);
-        this.scene = scene;
-        this.dropDurationSecs = dropDurationSecs;
-        this.delaySecs = delaySecs;
-    }
+  constructor(scene, startYOffset, dropDurationSecs, delaySecs = 0) {
+    super(startYOffset, 0, dropDurationSecs + delaySecs, /*loop*/ false, /*active*/ false);
+    this.scene            = scene;
+    this.dropDurationSecs = dropDurationSecs;
+    this.delaySecs        = delaySecs;
+  }
 
-    movementFunction(time) {
-        // If we are still in the delay phase, hold the start value
-        if (time < this.delaySecs) {
-            return this.startVal;
-        }
+  movementFunction(time) {
+    if (time < this.delaySecs) return this.startVal;
 
-        // We override the default linear movement with an "easeOutCubic" curve
-        // This makes the camera start fast and slow down smoothly as it reaches the wagon
-        let t = (time - this.delaySecs) / this.dropDurationSecs;
-        t = Math.min(Math.max(t, 0), 1); // Clamp between 0 and 1
-        const ease = 1 - Math.pow(1 - t, 3);
-        
-        return this.startVal + (this.endVal - this.startVal) * ease;
-    }
+    let t = (time - this.delaySecs) / this.dropDurationSecs;
+    t = Math.min(Math.max(t, 0), 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    return this.startVal + (this.endVal - this.startVal) * ease;
+  }
 
-    updatePositionObj() {
-        if (this.scene) {
-            // We expose the current height offset to the scene
-            this.scene.introCameraOffset = this.animVal;
-        }
-    }
+  updatePositionObj() {
+    if (this.scene) this.scene.introCameraOffset = this.animVal;
+  }
 }

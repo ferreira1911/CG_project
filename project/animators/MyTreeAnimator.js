@@ -1,35 +1,19 @@
 import { MyAnimator } from './MyAnimator.js';
 
+// One-shot tree fall from upright (0 rad) to flat on the ground (π/2),
+// using a quadratic ease-in so the fall accelerates like gravity.
 export class MyTreeAnimator extends MyAnimator {
-    /**
-     * @param {MyFlora} targetFlora - The tree instance to animate
-     * @param {number} duration - Fall duration in seconds
-     */
-    constructor(targetFlora, duration = 1.2) {
-        // Fall from 0 to 90 degrees (Math.PI / 2)
-        super(0, Math.PI / 2, duration, false, false);
-        this.targetFlora = targetFlora;
-    }
+  constructor(targetFlora, duration = 1.2) {
+    super(0, Math.PI / 2, duration, /*loop*/ false, /*active*/ false);
+    this.targetFlora = targetFlora;
+  }
 
-    /**
-     * Calculates the current fall angle using a quadratic ease-in
-     * to simulate gravity (slow start, accelerating fall).
-     */
-    movementFunction(time) {
-        // Normalize time from 0 to 1
-        const t = Math.min(1.0, time / this.animDurationSecs);
-        // Quadratic ease-in (t^2)
-        const easeInQuad = t * t;
-        
-        return this.startVal + this.length * easeInQuad;
-    }
+  movementFunction(time) {
+    const t = Math.min(1.0, time / this.animDurationSecs);
+    return this.startVal + this.length * (t * t);
+  }
 
-    /**
-     * Applies the calculated angle to the tree.
-     */
-    updatePositionObj() {
-        if (this.targetFlora) {
-            this.targetFlora.fallAngle = this.animVal;
-        }
-    }
+  updatePositionObj() {
+    if (this.targetFlora) this.targetFlora.fallAngle = this.animVal;
+  }
 }

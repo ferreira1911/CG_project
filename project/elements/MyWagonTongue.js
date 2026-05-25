@@ -2,13 +2,14 @@ import { CGFobject, CGFappearance } from '../../lib/CGF.js';
 
 const THICKNESS = 0.12;
 
-// Long thin pole extending forward from the bed.
+// Pole extending forward from the bed + a crossbar (whippletree) at the tip
+// that the horse harnesses to.
 export class MyWagonTongue extends CGFobject {
   constructor(scene, length, texture) {
     super(scene);
     this.length = length;
 
-    // Near-white so the wood texture comes through with its own colour.
+    // Near-white diffuse lets the wood texture supply its own colour.
     this.appearance = new CGFappearance(scene);
     this.appearance.setAmbient(0.40, 0.40, 0.40, 1.0);
     this.appearance.setDiffuse(0.90, 0.90, 0.90, 1.0);
@@ -25,16 +26,16 @@ export class MyWagonTongue extends CGFobject {
 
     const L = this.length;
     this.scene.pushMatrix();
-    // Anchor at the back end so the pole extends along +x.
+    // Anchor at the back end so the pole extends along +X.
     this.scene.translate(L / 2, 0, 0);
     this.scene.scale(L, THICKNESS, THICKNESS);
     this.scene.cube.display();
     this.scene.popMatrix();
 
-    // Whippletree (Harness Crossbar) at the tip of the tongue
+    // Whippletree crossbar at the front tip.
     this.scene.pushMatrix();
-    this.scene.translate(L - 0.2, 0, 0); // At the very front
-    this.scene.scale(0.1, 0.1, 1.8);    // Wide crossbar
+    this.scene.translate(L - 0.2, 0, 0);
+    this.scene.scale(0.1, 0.1, 1.8);
     this.scene.cube.display();
     this.scene.popMatrix();
   }
