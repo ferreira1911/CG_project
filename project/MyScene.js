@@ -134,23 +134,10 @@ export class MyScene extends CGFscene {
     if (this.hudContainerEl) this.hudContainerEl.style.display = 'none';
 
     // Sentinel values force the first HUD write so initial state is rendered.
-    this.lastRenderedHp    = -1;
-    this.lastRenderedScore = -1;
-    this.lastRenderedBales = -1;
+    this.lastRenderedHp      = -1;
+    this.lastRenderedScore   = -1;
+    this.lastRenderedBales   = -1;
     this.lastRenderedCarried = -1;
-
-    // GUI Stats variables
-    this.uiHp = 150;
-    this.uiDamage = 0;
-    this.uiRestored = 0;
-    this.uiBalesDelivered = 0;
-    this.uiScore = 0;
-    this.gameplayTime = 0;
-    this.gameOver = false;
-    this.menuActive = true;
-    this.menuEl = document.getElementById('main-menu');
-    
-    // Native key listeners — HTML overlays steal focus from CGF canvas
   }
 
   _initInputListeners() {
@@ -645,73 +632,6 @@ export class MyScene extends CGFscene {
     if (totalRestored > 0) this.uiRestored = totalRestored;
   }
 
-            // Reveal HUD once the intro is over, if the toggle allows it
-            if (this.displayHUD && this.hudContainerEl && this.hudContainerEl.style.display === 'none') {
-                this.hudContainerEl.style.display = 'flex';
-            } else if (!this.displayHUD && this.hudContainerEl && this.hudContainerEl.style.display !== 'none') {
-                this.hudContainerEl.style.display = 'none';
-            }
-            
-            // Sync UI stats
-            this.uiHp = Math.ceil(this.wagon.hp);
-            this.uiScore = Math.floor(this.gameplayTime);
-            
-            // Trigger floating text for damage/healing
-            if (this.uiDamage > 0) {
-                this.spawnFloatingText("-" + this.uiDamage, "#ff4444");
-                this.uiDamage = 0;
-            }
-            if (this.uiRestored > 0) {
-                this.spawnFloatingText("+" + this.uiRestored, "#44ff44");
-                this.uiRestored = 0;
-            }
-            
-            // Game Over check — must be AFTER HP is synced
-            if (this.wagon.hp <= 0 && !this.gameOver) {
-                this.wagon.hp = 0;
-                this.gameOver = true;
-                if (this.gameOverEl) this.gameOverEl.style.display = 'flex';
-            }
-        } else {
-            // During the intro, the terrain image might finish loading async.
-            // We need to snap the wagon and horses to the correct height so they aren't buried!
-            if (this.terrain && this.terrain.ready) {
-                this.wagon.y = this.terrain.heightAt(this.wagon.x, this.wagon.z);
-                this.wagon._updateHorsePositions();
-            }
-        }
-        
-        // Update HTML HUD using cached elements and value diffing (prevents DOM thrashing)
-        const hpInt = Math.ceil(this.wagon.hp);
-        if (hpInt !== this.lastRenderedHp && this.hpNumEl && this.hpBarEl) {
-            this.lastRenderedHp = hpInt;
-            const hpPercent = (this.wagon.hp / this.wagon.maxHp) * 100;
-            
-            this.hpNumEl.innerText = hpInt;
-            this.hpBarEl.style.width = Math.max(0, hpPercent) + '%';
-            
-            // Color thresholds
-            if (hpPercent > 50) {
-                this.hpBarEl.style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
-            } else if (hpPercent > 20) {
-                this.hpBarEl.style.background = 'linear-gradient(90deg, #ffb300, #ffd54f)';
-            } else {
-                this.hpBarEl.style.background = 'linear-gradient(90deg, #e53935, #ef5350)';
-            }
-        }
-        
-        // Sync Score and Bales
-        if (this.uiScore !== this.lastRenderedScore && this.scoreValEl) {
-            this.lastRenderedScore = this.uiScore;
-            this.scoreValEl.innerText = this.uiScore;
-        }
-        const carriedCount = this.wagon.carriedBales.length;
-        if ((this.uiBalesDelivered !== this.lastRenderedBales || carriedCount !== this.lastRenderedCarried) && this.balesValEl) {
-            this.lastRenderedBales = this.uiBalesDelivered;
-            this.lastRenderedCarried = carriedCount;
-            this.balesValEl.innerText = this.uiBalesDelivered + carriedCount;
-        }
-    }
   _showHUDIfEnabled() {
     if (!this.hudContainerEl) return;
     const wantsShown = this.displayHUD;
@@ -757,9 +677,15 @@ export class MyScene extends CGFscene {
       this.lastRenderedScore = this.uiScore;
       this.scoreValEl.innerText = this.uiScore;
     }
-    if (this.uiBalesDelivered !== this.lastRenderedBales && this.balesValEl) {
-      this.lastRenderedBales = this.uiBalesDelivered;
-      this.balesValEl.innerText = this.uiBalesDelivered;
+    // Bale counter shows delivered + currently carried, so it ticks up the
+    // moment the player picks one up rather than waiting for delivery.
+    const carriedCount = this.wagon.carriedBales.length;
+    const balesChanged = this.uiBalesDelivered !== this.lastRenderedBales
+                      || carriedCount         !== this.lastRenderedCarried;
+    if (balesChanged && this.balesValEl) {
+      this.lastRenderedBales   = this.uiBalesDelivered;
+      this.lastRenderedCarried = carriedCount;
+      this.balesValEl.innerText = this.uiBalesDelivered + carriedCount;
     }
   }
 
@@ -812,14 +738,15 @@ export class MyScene extends CGFscene {
     this.wagon.yaw = this.barnYaw;
     this.wagon._updateHorsePositions();
 
-    this.uiBalesDelivered  = 0;
-    this.uiScore           = 0;
-    this.uiDamage          = 0;
-    this.uiRestored        = 0;
-    this.lastRenderedBales = -1;
-    this.lastRenderedScore = -1;
-    this.lastRenderedHp    = -1;
-    this.gameplayTime      = 0;
+    this.uiBalesDelivered    = 0;
+    this.uiScore             = 0;
+    this.uiDamage            = 0;
+    this.uiRestored          = 0;
+    this.lastRenderedBales   = -1;
+    this.lastRenderedScore   = -1;
+    this.lastRenderedHp      = -1;
+    this.lastRenderedCarried = -1;
+    this.gameplayTime        = 0;
 
     this.gameOver = false;
     if (this.gameOverEl) this.gameOverEl.style.display = 'none';
