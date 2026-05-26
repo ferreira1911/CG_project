@@ -4,35 +4,47 @@ import { MyWagonCover }  from './MyWagonCover.js';
 import { MyWagonTongue } from './MyWagonTongue.js';
 import { MyWagonWheel }  from './MyWagonWheel.js';
 import { MyHorse }       from './MyHorse.js';
+import { MyDriver }      from './MyDriver.js';
 import { MyHorseAnimator }   from '../animators/MyHorseAnimator.js';
 import { MyHayBaleAnimator } from '../animators/MyHayBaleAnimator.js';
 
+// Wagon bed: 1- length along local +X  2- width along local +Z  3- floor/body height
 const BED_LENGTH         = 8.0;
 const BED_WIDTH          = 4.0;
 const BED_HEIGHT         = 0.9;
-const RAIL_HEIGHT        = BED_HEIGHT * 1.2;  // duplicates MyWagonBed.RAIL_HEIGHT_FACTOR — keep in sync
+
+// Rails and wheels: 1- side rail height  2/3- front/rear wheel radius  4- wheel width
+const RAIL_HEIGHT        = BED_HEIGHT * 1.2;  // keep in sync with MyWagonBed
 const FRONT_WHEEL_RADIUS = 0.85;
 const BACK_WHEEL_RADIUS  = 1.20;
 const WHEEL_THICKNESS    = 0.22;
-const TONGUE_LENGTH      = 3.5;
 
-const MAX_SPEED    = 8.0;   // u/s
-const ACCELERATION = 4.0;   // u/s² — ~2 s to top speed (loaded-wagon feel)
-const BRAKE        = 10.0;  // u/s² — S key brakes harder than throttle accelerates
-const FRICTION     = 2.0;   // u/s² — coast deceleration
+// Horse hitch: 1- body distance from wagon front  2- forward offset  3- half hitch width
+const HORSE_BODY_CENTER_DIST = 3.65;
+const HORSE_HITCH_FORWARD    = -0.35;
+const HORSE_HITCH_SPREAD     = 0.92;
 
-const MAX_STEER    = Math.PI / 5;  // ~36° lock
-const STEER_RATE   = 1.8;          // rad/s while A/D held
-const STEER_RETURN = 3.0;          // rad/s self-centering on release
-const WHEELBASE    = 2 * BED_LENGTH * 0.35;  // front axle +wx, back axle -wx
+// Speed model: 1- max speed  2- acceleration  3- brake force  4- coasting friction
+const MAX_SPEED    = 8.0;
+const ACCELERATION = 4.0;
+const BRAKE        = 10.0;
+const FRICTION     = 2.0;
 
+// Steering model: 1- max steering angle  2- steering speed  3- return speed  4- axle distance
+const MAX_STEER    = Math.PI / 5;
+const STEER_RATE   = 1.8;
+const STEER_RETURN = 3.0;
+const WHEELBASE    = 2 * BED_LENGTH * 0.35;
+
+// Gameplay physics: 1- pickup radius  2- HP drain/s  3- collision immunity  4- knockback strength
 const BALE_PICKUP_RADIUS = 6.0;
-const PASSIVE_DRAIN_HP_S = 1.0;    // base HP/s loss; scaled by difficulty
+const PASSIVE_DRAIN_HP_S = 1.0;
 const COLLISION_IFRAMES_S = 1.0;
-const KNOCKBACK_FRAC = 0.9;        // fraction of MAX_SPEED used as reverse impulse
+const KNOCKBACK_FRAC = 0.9;
 
-const MAX_TILT       = Math.PI / 9; // ~20° cap so a steep heightmap pixel can't stand the wagon on end
-const TILT_SMOOTH_TC = 0.1;         // s — exp-lerp time constant for pitch/roll smoothing
+// Terrain tilt: 1- max pitch/roll angle  2- smoothing time constant
+const MAX_TILT       = Math.PI / 9;
+const TILT_SMOOTH_TC = 0.1;
 
 export class MyWagon extends CGFobject {
   constructor(scene, x, y, z, yaw, scale, horseTexture) {
@@ -47,11 +59,19 @@ export class MyWagon extends CGFobject {
 
     this.bed        = new MyWagonBed(scene, BED_LENGTH, BED_WIDTH, BED_HEIGHT, this.bedTexture);
     this.cover      = new MyWagonCover(scene, BED_LENGTH * 0.5, BED_WIDTH * 0.5, this.clothTexture);
-    this.tongue     = new MyWagonTongue(scene, TONGUE_LENGTH, this.woodenTexture);
+    this.tongue     = new MyWagonTongue(scene, this.woodenTexture);
+    this.driver     = new MyDriver(scene);
     this.frontWheel = new MyWagonWheel(scene, FRONT_WHEEL_RADIUS, WHEEL_THICKNESS, this.bedTexture);
     this.backWheel  = new MyWagonWheel(scene, BACK_WHEEL_RADIUS,  WHEEL_THICKNESS, this.bedTexture);
 
-    // Horse is harnessed to the tongue tip. Constructor places it at origin;
+    this.reinAppearance = new CGFappearance(scene);
+    this.reinAppearance.setAmbient(0.10, 0.06, 0.03, 1.0);
+    this.reinAppearance.setDiffuse(0.26, 0.16, 0.08, 1.0);
+    this.reinAppearance.setSpecular(0.03, 0.02, 0.01, 1.0);
+    this.reinAppearance.setShininess(4.0);
+
+    // Horse is placed near the wagon front; hitch geometry targets it later.
+    // Constructor places it at origin;
     // _updateHorsePositions() moves it into world coords using the same
     // formula the per-frame update will use, so the start state is consistent.
     const horseScale = 0.018 * scale;
@@ -80,7 +100,7 @@ export class MyWagon extends CGFobject {
   // Recompute horse world coords from current wagon position + heading.
   // Called at construction and every update() tick.
   _updateHorsePositions() {
-    const fwdDist = (BED_LENGTH * 0.5 + TONGUE_LENGTH) * this.scale;
+    const fwdDist = (BED_LENGTH * 0.5 + HORSE_BODY_CENTER_DIST) * this.scale;
     const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
 
     // Shift horse sideways into the turn; left vector = (-sin(yaw), 0, -cos(yaw)).
@@ -105,6 +125,7 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Runs every gameplay tick: motion, terrain tilt, damage, animation, and input.
   update(dt, iface) {
     this._updateSpeed(dt, iface);
     this._updateSteering(dt, iface);
@@ -120,6 +141,7 @@ export class MyWagon extends CGFobject {
     this._tickDropAnimators();
   }
 
+  // Updates forward speed from W/S input, braking, and passive friction.
   _updateSpeed(dt, iface) {
     if (iface.isKeyPressed('KeyW')) {
       this.speed = Math.min(this.speed + ACCELERATION * dt, MAX_SPEED);
@@ -137,6 +159,7 @@ export class MyWagon extends CGFobject {
     else if (this.speed < 0) this.speed = Math.min(this.speed + FRICTION * dt, 0);
   }
 
+  // Updates the steering angle from A/D input and recentres it on release.
   _updateSteering(dt, iface) {
     if (iface.isKeyPressed('KeyA')) {
       this.steeringAngle = Math.min(this.steeringAngle + STEER_RATE * dt,  MAX_STEER);
@@ -149,6 +172,7 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Moves the wagon using a bicycle/Ackermann steering approximation.
   _integrateMotion(dt) {
     // Bicycle (Ackermann) yaw rate: ω = v·tan(φ) / L
     const worldWheelbase = WHEELBASE * this.scale;
@@ -194,6 +218,7 @@ export class MyWagon extends CGFobject {
     this.roll  += (targetRoll  - this.roll)  * k;
   }
 
+  // Applies passive health drain and counts down collision invulnerability.
   _updateHp(dt) {
     if (this.hp > 0) {
       // Difficulty ramp: +0.5 HP/s drain per full 30 s of score.
@@ -203,6 +228,7 @@ export class MyWagon extends CGFobject {
     if (this.invulnerabilityTimer > 0) this.invulnerabilityTimer -= dt;
   }
 
+  // Checks collision targets in priority order and stops after the first hit.
   _resolveCollisions() {
     const wagonRadius = 1.6 * this.scale;
     if (this._collideWithRocks(wagonRadius)) return;
@@ -210,6 +236,7 @@ export class MyWagon extends CGFobject {
     this._collideWithBarn(wagonRadius);
   }
 
+  // Checks circular collision against every rock.
   _collideWithRocks(wagonRadius) {
     if (!this.scene.rocks) return false;
     for (const rock of this.scene.rocks) {
@@ -224,6 +251,7 @@ export class MyWagon extends CGFobject {
     return false;
   }
 
+  // Checks tree collisions and starts the tree-fall animation on impact.
   _collideWithTrees(wagonRadius) {
     if (!this.scene.treeZones) return false;
     for (const zone of this.scene.treeZones) {
@@ -274,6 +302,7 @@ export class MyWagon extends CGFobject {
     return false;
   }
 
+  // Starts/stops the horse gait animation according to wagon speed.
   _updateHorseAnimation() {
     if (Math.abs(this.speed) > 0.1) {
       // Re-enable using current time so the animator doesn't time-skip on resume.
@@ -288,6 +317,7 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Spins front and rear wheels according to the travelled distance.
   _updateWheelSpin() {
     // Distance is world-space; convert to pre-scale before dividing by wheel radius.
     const localDist = this._lastDist / this.scale;
@@ -297,6 +327,7 @@ export class MyWagon extends CGFobject {
     this.backWheel.spinAngle  -= localDist / BACK_WHEEL_RADIUS;
   }
 
+  // Handles edge-triggered pickup/drop input for hay bales.
   _handleBaleInput(iface) {
     const pNow = iface.isKeyPressed('KeyP');
     const lNow = iface.isKeyPressed('KeyL');
@@ -312,6 +343,7 @@ export class MyWagon extends CGFobject {
     this._lPressedLast = lNow;
   }
 
+  // Picks the nearest available bale inside pickup radius.
   _tryPickupNearestBale() {
     let nearest = null, nearestDist = Infinity;
     for (const bale of this.scene.haybales) {
@@ -333,6 +365,7 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Drops the last carried bale and starts its fall animation.
   _dropLastCarriedBale() {
     const i = this.carriedBales.length - 1;
     const bale = this.carriedBales.pop();
@@ -359,6 +392,7 @@ export class MyWagon extends CGFobject {
     bale.dropAnimator.enable(this.scene.time);
   }
 
+  // Keeps carried bale render heights synced to the wagon bed.
   _updateCarriedBales() {
     // Carried bales render in wagon-local space inside display(); we only
     // refresh renderY here so they stay on top of the bed if the wagon's
@@ -368,6 +402,7 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Advances active bale drop animations and marks newly landed bales.
   _tickDropAnimators() {
     if (!this.scene.haybales) return;
     for (const bale of this.scene.haybales) {
@@ -381,6 +416,7 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Applies random collision damage, knockback, invulnerability, and camera shake.
   _triggerCollisionDamage(minDmg, maxDmg) {
     const dmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
     this.hp = Math.max(0, this.hp - dmg);
@@ -392,6 +428,7 @@ export class MyWagon extends CGFobject {
     this.scene.cameraShake = 1.0;
   }
 
+  // Draws the full wagon assembly in wagon-local space.
   display() {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
@@ -416,12 +453,10 @@ export class MyWagon extends CGFobject {
     this.scene.popMatrix();
 
     this._displayCarriedBales();
+    this._displayDriver();
 
-    // Tongue tucks under the bed's front edge.
-    this.scene.pushMatrix();
-    this.scene.translate(BED_LENGTH * 0.5, BACK_WHEEL_RADIUS + BED_HEIGHT * 0.4, 0);
-    this.tongue.display();
-    this.scene.popMatrix();
+    this._displayTongue();
+    this._displayReins();
 
     this._displayWheels();
 
@@ -431,6 +466,119 @@ export class MyWagon extends CGFobject {
     for (const h of this.horses) h.display();
   }
 
+  // Draws the double-shaft tongue from the wagon pivot to horse hitch points.
+  _displayTongue() {
+    const [leftTarget, rightTarget] = this._hitchTargets();
+    const origin = [BED_LENGTH * 0.5 - 0.55, this._tongueY(), 0];
+    const toTongueLocal = (p) => [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]];
+
+    this.scene.pushMatrix();
+    this.scene.translate(origin[0], origin[1], origin[2]);
+    this.tongue.displayToTargets(toTongueLocal(leftTarget), toTongueLocal(rightTarget));
+    this.scene.popMatrix();
+  }
+
+  // Draws the seated driver on the front bench.
+  _displayDriver() {
+    this.scene.pushMatrix();
+    this.scene.translate(BED_LENGTH * 0.5 - 1.0, BACK_WHEEL_RADIUS + BED_HEIGHT + 0.25, 0);
+    this.driver.display();
+    this.scene.popMatrix();
+  }
+
+  // Draws the reins from the driver's hands to the horse hitch points.
+  _displayReins() {
+    this.reinAppearance.apply();
+
+    const startX = BED_LENGTH * 0.5 - 0.45;
+    const startY = BACK_WHEEL_RADIUS + BED_HEIGHT + 1.35;
+    const [leftEnd, rightEnd] = this._hitchTargets(0.18);
+
+    this._displayBarBetween([startX, startY,  0.36], leftEnd,  0.030);
+    this._displayBarBetween([startX, startY, -0.36], rightEnd, 0.030);
+  }
+
+  // Height of the wagon-side tongue pivot in wagon-local coordinates.
+  _tongueY() {
+    return BACK_WHEEL_RADIUS + BED_HEIGHT * 1.05;
+  }
+
+  // Returns the horse steering angle relative to the wagon frame.
+  _hitchSteer() {
+    const horse = this.horses && this.horses[0];
+    if (horse) return horse.yaw - this.yaw - Math.PI / 2;
+    return this.steeringAngle * 0.6;
+  }
+
+  // Computes left/right horse hitch points and converts them to wagon-local space.
+  _hitchTargets(lift = 0) {
+    const horse = this.horses && this.horses[0];
+    if (!horse) return [
+      [BED_LENGTH * 0.5 + HORSE_BODY_CENTER_DIST, this._tongueY() + lift,  HORSE_HITCH_SPREAD],
+      [BED_LENGTH * 0.5 + HORSE_BODY_CENTER_DIST, this._tongueY() + lift, -HORSE_HITCH_SPREAD],
+    ];
+
+    const forwardX = Math.sin(horse.yaw);
+    const forwardZ = Math.cos(horse.yaw);
+    const lateralX = Math.cos(horse.yaw);
+    const lateralZ = -Math.sin(horse.yaw);
+
+    const center = [
+      horse.x + forwardX * HORSE_HITCH_FORWARD * this.scale,
+      horse.y + (horse.animYOffset || 0) + (this._tongueY() + lift) * this.scale,
+      horse.z + forwardZ * HORSE_HITCH_FORWARD * this.scale,
+    ];
+
+    const spread = HORSE_HITCH_SPREAD * this.scale;
+    return [
+      this._worldToWagonLocal([
+        center[0] - lateralX * spread,
+        center[1],
+        center[2] - lateralZ * spread,
+      ]),
+      this._worldToWagonLocal([
+        center[0] + lateralX * spread,
+        center[1],
+        center[2] + lateralZ * spread,
+      ]),
+    ];
+  }
+
+  // Converts a world-space point into the tilted/scaled wagon-local frame.
+  _worldToWagonLocal(point) {
+    let x = point[0] - this.x;
+    let y = point[1] - this.y;
+    let z = point[2] - this.z;
+
+    const cy = Math.cos(-this.yaw), sy = Math.sin(-this.yaw);
+    [x, z] = [x * cy + z * sy, -x * sy + z * cy];
+
+    const cr = Math.cos(-this.roll), sr = Math.sin(-this.roll);
+    [y, z] = [y * cr - z * sr, y * sr + z * cr];
+
+    const cp = Math.cos(-this.pitch), sp = Math.sin(-this.pitch);
+    [x, y] = [x * cp - y * sp, x * sp + y * cp];
+
+    return [x / this.scale, y / this.scale, z / this.scale];
+  }
+
+  // Draws one thin cube bar between two wagon-local points.
+  _displayBarBetween(a, b, thickness) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const yaw = Math.atan2(-dz, dx);
+    const pitch = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
+
+    this.scene.pushMatrix();
+    this.scene.translate((a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5, (a[2] + b[2]) * 0.5);
+    this.scene.rotate(yaw, 0, 1, 0);
+    this.scene.rotate(pitch, 0, 0, 1);
+    this.scene.scale(len, thickness, thickness);
+    this.scene.cube.display();
+    this.scene.popMatrix();
+  }
+
+  // Draws hay bales currently being carried on the wagon bed.
   _displayCarriedBales() {
     for (let i = 0; i < this.carriedBales.length; i++) {
       const bale = this.carriedBales[i];
@@ -449,6 +597,7 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Draws all four wheels, steering only the front pair visually.
   _displayWheels() {
     const wx = BED_LENGTH * 0.35;
     const wz = BED_WIDTH  * 0.5 + WHEEL_THICKNESS * 0.5 + 0.02;

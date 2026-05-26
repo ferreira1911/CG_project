@@ -19,8 +19,10 @@ import { r } from "./utils.js";
 
 const SUN_WORLD_DIR  = [-112.0, 135.0, -100.0];
 const MAP_HALF       = 150;
-const DRAW_DIST      = 135;
-const DRAW_DIST_SQ   = DRAW_DIST * DRAW_DIST;
+const DRAW_DIST         = 135;
+const DRAW_DIST_SQ      = DRAW_DIST * DRAW_DIST;
+const BALE_DRAW_DIST    = 85;
+const BALE_DRAW_DIST_SQ = BALE_DRAW_DIST * BALE_DRAW_DIST;
 const GRASS_GRID     = 9;
 const GRASS_MAP_SIZE = 300;
 const MAX_TREES      = 12;   // must match MAX_TREES in terrain.frag
@@ -895,26 +897,30 @@ export class MyScene extends CGFscene {
   }
 
   _displayHayBales(cx, cz) {
-    // Two batched passes (bale mesh, then arrow) so we change shader twice
-    // total instead of twice per bale — shader rebind is one of the most
-    // expensive GL ops on integrated GPUs.
-    const visibleBales = [];
+    const nearBales = [];
+    const farBales  = [];
+
     for (const bale of this.haybales) {
       if (bale.isPickedUp && !(bale.dropAnimator && bale.dropAnimator.active)) {
         if (this.wagon?.carriedBales.includes(bale)) continue;
       }
       const dx = bale.x - cx, dz = bale.z - cz;
-      if (dx * dx + dz * dz < DRAW_DIST_SQ) visibleBales.push(bale);
+      const distSq = dx * dx + dz * dz;
+      if (distSq < BALE_DRAW_DIST_SQ)      nearBales.push(bale);
+      else if (distSq < DRAW_DIST_SQ)      farBales.push(bale);
     }
 
-    if (visibleBales.length > 0) {
+    // Pass 1: bale meshes (near only).
+    if (nearBales.length > 0) {
       this.setActiveShader(this.defaultShader);
-      for (const bale of visibleBales) bale.display();
+      for (const bale of nearBales) bale.display();
     }
 
+    // Pass 2: arrows over all visible bales (near + far).
     if (this.displayArrows && this.arrow) {
       let arrowShaderActive = false;
-      for (const bale of visibleBales) {
+      const allVisible = nearBales.concat(farBales);
+      for (const bale of allVisible) {
         if (bale.isPickedUp) continue;
         if (!arrowShaderActive) {
           this.setActiveShader(this.arrowShader);

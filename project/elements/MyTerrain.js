@@ -2,7 +2,7 @@ import { CGFobject, CGFappearance, CGFshader, CGFtexture } from '../../lib/CGF.j
 import { MyPlane } from '../geometric/MyPlane.js';
 
 const TERRAIN_SIZE = 300;
-const MAX_HEIGHT   = 20.0;  // must match `heightMapColor.r * 100.0` exponent in terrain.vert
+const MAX_HEIGHT   = 10.0;  // must match `heightMapColor.r * 100.0` exponent in terrain.vert
 
 export class MyTerrain extends CGFobject {
   constructor(scene) {
