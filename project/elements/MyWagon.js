@@ -31,6 +31,9 @@ const PASSIVE_DRAIN_HP_S = 1.0;    // base HP/s loss; scaled by difficulty
 const COLLISION_IFRAMES_S = 1.0;
 const KNOCKBACK_FRAC = 0.9;        // fraction of MAX_SPEED used as reverse impulse
 
+const MAX_TILT       = Math.PI / 9; // ~20° cap so a steep heightmap pixel can't stand the wagon on end
+const TILT_SMOOTH_TC = 0.1;         // s — exp-lerp time constant for pitch/roll smoothing
+
 export class MyWagon extends CGFobject {
   constructor(scene, x, y, z, yaw, scale, horseTexture) {
     super(scene);
@@ -59,6 +62,8 @@ export class MyWagon extends CGFobject {
 
     this.speed         = 0;
     this.steeringAngle = 0;
+    this.pitch         = 0;  // around local +Z, nose-up positive
+    this.roll          = 0;  // around local +X, right-side-down positive
 
     this.maxHp = 150;
     this.hp = 150;
@@ -92,6 +97,11 @@ export class MyWagon extends CGFobject {
       // Horse rotates slightly less than the wheels — gives it the feel of
       // dragging the tongue rather than steering itself.
       h.yaw = this.yaw + Math.PI / 2 + this.steeringAngle * 0.6;
+      // Inherit half the body tilt — the horse is in front of the wagon on
+      // (usually) less-steep ground, so a softened tilt reads more natural
+      // than mirroring the wagon's full angle.
+      h.bodyPitch = this.pitch * 0.5;
+      h.bodyRoll  = this.roll  * 0.5;
     }
   }
 
@@ -99,6 +109,7 @@ export class MyWagon extends CGFobject {
     this._updateSpeed(dt, iface);
     this._updateSteering(dt, iface);
     this._integrateMotion(dt);
+    this._updateBodyOrientation(dt);
     this._updateHp(dt);
     if (this.invulnerabilityTimer <= 0) this._resolveCollisions();
     this._updateHorseAnimation();
@@ -150,6 +161,37 @@ export class MyWagon extends CGFobject {
       this.y = this.scene.terrain.heightAt(this.x, this.z);
     }
     this._lastDist = dist;
+  }
+
+  // Sample terrain at the four corners of the wagon footprint and derive
+  // body pitch/roll from the height deltas. Pivoting at the wagon centre
+  // (this.x/z) makes the front and back ends land on their own terrain
+  // heights without a separate Y compensation.
+  _updateBodyOrientation(dt) {
+    const terrain = this.scene.terrain;
+    if (!terrain || !terrain.ready) return;
+
+    const halfWB    = WHEELBASE * 0.5 * this.scale;
+    const halfWidth = (BED_WIDTH * 0.5) * this.scale;
+    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+
+    // Forward (+X local) maps to (cos, -sin) in world XZ; right (+Z local) maps to (sin, cos).
+    const hFront = terrain.heightAt(this.x + cy * halfWB,    this.z - sy * halfWB);
+    const hBack  = terrain.heightAt(this.x - cy * halfWB,    this.z + sy * halfWB);
+    const hRight = terrain.heightAt(this.x + sy * halfWidth, this.z + cy * halfWidth);
+    const hLeft  = terrain.heightAt(this.x - sy * halfWidth, this.z - cy * halfWidth);
+
+    let targetPitch = Math.atan2(hFront - hBack, 2 * halfWB);
+    let targetRoll  = Math.atan2(hLeft  - hRight, 2 * halfWidth);
+    if (targetPitch >  MAX_TILT) targetPitch =  MAX_TILT;
+    if (targetPitch < -MAX_TILT) targetPitch = -MAX_TILT;
+    if (targetRoll  >  MAX_TILT) targetRoll  =  MAX_TILT;
+    if (targetRoll  < -MAX_TILT) targetRoll  = -MAX_TILT;
+
+    // Frame-rate-independent exp-lerp: k = 1 - e^(-dt/tc).
+    const k = 1 - Math.exp(-dt / TILT_SMOOTH_TC);
+    this.pitch += (targetPitch - this.pitch) * k;
+    this.roll  += (targetRoll  - this.roll)  * k;
   }
 
   _updateHp(dt) {
@@ -353,7 +395,12 @@ export class MyWagon extends CGFobject {
   display() {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
-    this.scene.rotate(this.yaw, 0, 1, 0);
+    this.scene.rotate(this.yaw,   0, 1, 0);
+    // Roll first (bank around forward axis), then pitch (nose-up around
+    // lateral axis). This order matches what a vehicle does on a sideslope:
+    // it leans along the slope, then noses up the gradient.
+    this.scene.rotate(this.roll,  1, 0, 0);
+    this.scene.rotate(this.pitch, 0, 0, 1);
     this.scene.scale(this.scale, this.scale, this.scale);
 
     // Bed centred above the back axle (back wheels set the bed height).

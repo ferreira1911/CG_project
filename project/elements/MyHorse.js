@@ -36,8 +36,17 @@ export class MyHorse extends CGFobject {
     this.scene.translate(this.x, this.y + yOffset, this.z);
     this.scene.rotate(this.yaw, 0, 1, 0);
 
-    // Pitch tilt during gallop. Z is the horse's lateral axis since it
-    // faces +X locally, so a Z-rotation reads as nose-up/nose-down.
+    // The OBJ model has its nose along object +Z (proven by the wagon's
+    // yaw + π/2 alignment), so X is the lateral axis (pitch) and Z is the
+    // forward axis (roll/sway).
+    const bodyRoll  = this.bodyRoll  || 0;
+    const bodyPitch = this.bodyPitch || 0;
+    if (bodyRoll  !== 0) this.scene.rotate(bodyRoll,  0, 0, 1);
+    if (bodyPitch !== 0) this.scene.rotate(bodyPitch, 1, 0, 0);
+
+    // Gallop bounce: cos at the same phase as the Y bounce. Around +Z
+    // (forward axis) this reads as a rocking-horse sway rather than a
+    // nose-up/nose-down pitch — close enough for the gallop loop.
     const pitchOffset = this.animPitchOffset || 0;
     if (pitchOffset !== 0) this.scene.rotate(pitchOffset, 0, 0, 1);
 
