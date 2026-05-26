@@ -27,6 +27,9 @@ const GRASS_GRID     = 9;
 const GRASS_MAP_SIZE = 300;
 const MAX_TREES      = 12;   // must match MAX_TREES in terrain.frag
 
+const WAGON_SPAWN_FORWARD = 25.0;
+const WAGON_SPAWN_RIGHT   = 0.0;
+
 export class MyScene extends CGFscene {
   constructor() {
     super();
@@ -182,12 +185,13 @@ export class MyScene extends CGFscene {
       window: this.barnWindowTexture
     });
 
-    // Spawn wagon just in front of the barn door, along the barn's local -Z.
-    const spawnZ = this.barn.areaOffsetZ - 2.5;
+    // Spawn wagon near the barn door, offset in barn-local coordinates.
+    const spawnX = WAGON_SPAWN_RIGHT;
+    const spawnZ = WAGON_SPAWN_FORWARD;
     const cy = Math.cos(this.barnYaw);
     const sy = Math.sin(this.barnYaw);
-    const wagonX = this.barnPosX + spawnZ * sy;
-    const wagonZ = this.barnPosZ + spawnZ * cy;
+    const wagonX = this.barnPosX + spawnX * cy + spawnZ * sy;
+    const wagonZ = this.barnPosZ - spawnX * sy + spawnZ * cy;
 
     this.wagon = new MyWagon(this, wagonX, this.terrain.heightAt(wagonX, wagonZ), wagonZ, this.barnYaw, 1.0, this.horseTexture);
   }
@@ -724,21 +728,9 @@ export class MyScene extends CGFscene {
   }
 
   restartGame() {
-    if (!this.wagon) return;
+    if (!this.terrain?.ready) return;
 
-    this.wagon.hp           = this.wagon.maxHp;
-    this.wagon.speed        = 0;
-    this.wagon.steer        = 0;
-    this.wagon.carriedBales = [];
-
-    const spawnOffset = 10;
-    const spawnCy = Math.cos(this.barnYaw);
-    const spawnSy = Math.sin(this.barnYaw);
-    this.wagon.x = this.barnPosX + spawnSy * spawnOffset;
-    this.wagon.z = this.barnPosZ + spawnCy * spawnOffset;
-    this.wagon.y = this.terrain ? this.terrain.heightAt(this.wagon.x, this.wagon.z) : 0;
-    this.wagon.yaw = this.barnYaw;
-    this.wagon._updateHorsePositions();
+    this.scatter();
 
     this.uiBalesDelivered    = 0;
     this.uiScore             = 0;
@@ -750,7 +742,11 @@ export class MyScene extends CGFscene {
     this.lastRenderedCarried = -1;
     this.gameplayTime        = 0;
 
-    this.gameOver = false;
+    this.gameOver   = false;
+    this.menuActive = false;
+    this.freeCamera = false;
+    this.cameraShake = 0;
+    if (this.introAnimator) this.introAnimator.disable();
     if (this.gameOverEl) this.gameOverEl.style.display = 'none';
   }
 

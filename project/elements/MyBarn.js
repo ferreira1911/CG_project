@@ -85,9 +85,7 @@ export class MyBarn extends CGFobject {
     if (!this.frontTex) return;
     this.scene.pushMatrix();
     this.scene.translate(0, this.height / 2, this.depth / 2 + Z_FIGHT_EPS);
-    // Negative scales flip the quad on both axes to match the texture's
-    // expected orientation (texture is authored upside-down + mirrored).
-    this.scene.scale(-this.width, -this.height, 1);
+    this.scene.scale(this.width, this.height, 1);
     this.frontTex.bind();
     this.quad.display();
     this.scene.popMatrix();

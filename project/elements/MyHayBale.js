@@ -35,7 +35,7 @@ export class MyHayBale extends CGFobject {
 
   // Anchor for the floating arrow above this bale.
   getTopCenter() {
-    return [this.x, this.y + this.HEIGHT * this.scale + 0.5, this.z];
+    return [this.x, this.renderY + this.HEIGHT * this.scale + 0.8, this.z];
   }
 
   // Apply material + scale the shared cube to bale dimensions. Caller handles
