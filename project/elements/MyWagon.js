@@ -36,17 +36,19 @@ const STEER_RATE   = 1.8;
 const STEER_RETURN = 3.0;
 const WHEELBASE    = 2 * BED_LENGTH * 0.35;
 
-// Gameplay physics: 1- pickup radius  2- HP drain/s  3- collision immunity  4- knockback strength
+// Gameplay physics: 1- pickup radius  2- HP drain/s  3- immunity  4- knockback  5- map boundary
 const BALE_PICKUP_RADIUS = 6.0;
 const PASSIVE_DRAIN_HP_S = 1.0;
 const COLLISION_IFRAMES_S = 1.0;
 const KNOCKBACK_FRAC = 0.9;
+const MAP_BOUNDARY_RADIUS = 140.0;
 
 // Terrain tilt: 1- max pitch/roll angle  2- smoothing time constant
 const MAX_TILT       = Math.PI / 9;
 const TILT_SMOOTH_TC = 0.1;
 
 export class MyWagon extends CGFobject {
+  // Builds wagon parts and initial gameplay state.
   constructor(scene, x, y, z, yaw, scale, horseTexture) {
     super(scene);
     this.x = x; this.y = y; this.z = z;
@@ -70,10 +72,6 @@ export class MyWagon extends CGFobject {
     this.reinAppearance.setSpecular(0.03, 0.02, 0.01, 1.0);
     this.reinAppearance.setShininess(4.0);
 
-    // Horse is placed near the wagon front; hitch geometry targets it later.
-    // Constructor places it at origin;
-    // _updateHorsePositions() moves it into world coords using the same
-    // formula the per-frame update will use, so the start state is consistent.
     const horseScale = 0.018 * scale;
     this.horses = [new MyHorse(scene, 0, 0, 0, horseScale, 0, horseTexture)];
     this._updateHorsePositions();
@@ -97,13 +95,11 @@ export class MyWagon extends CGFobject {
     this.BALE_CARRY_Y = BACK_WHEEL_RADIUS + BED_HEIGHT;
   }
 
-  // Recompute horse world coords from current wagon position + heading.
-  // Called at construction and every update() tick.
+  // Updates the horse world position from the wagon transform.
   _updateHorsePositions() {
     const fwdDist = (BED_LENGTH * 0.5 + HORSE_BODY_CENTER_DIST) * this.scale;
     const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
 
-    // Shift horse sideways into the turn; left vector = (-sin(yaw), 0, -cos(yaw)).
     const shiftFactor = 2.0 * this.scale;
     const shiftX = -sy * this.steeringAngle * shiftFactor;
     const shiftZ = -cy * this.steeringAngle * shiftFactor;
@@ -114,12 +110,7 @@ export class MyWagon extends CGFobject {
       h.y   = (this.scene.terrain && this.scene.terrain.ready)
                 ? this.scene.terrain.heightAt(h.x, h.z)
                 : this.y;
-      // Horse rotates slightly less than the wheels — gives it the feel of
-      // dragging the tongue rather than steering itself.
       h.yaw = this.yaw + Math.PI / 2 + this.steeringAngle * 0.6;
-      // Inherit half the body tilt — the horse is in front of the wagon on
-      // (usually) less-steep ground, so a softened tilt reads more natural
-      // than mirroring the wagon's full angle.
       h.bodyPitch = this.pitch * 0.5;
       h.bodyRoll  = this.roll  * 0.5;
     }
@@ -174,23 +165,18 @@ export class MyWagon extends CGFobject {
 
   // Moves the wagon using a bicycle/Ackermann steering approximation.
   _integrateMotion(dt) {
-    // Bicycle (Ackermann) yaw rate: ω = v·tan(φ) / L
     const worldWheelbase = WHEELBASE * this.scale;
     this.yaw += (this.speed * Math.tan(this.steeringAngle)) / worldWheelbase * dt;
 
     const dist = this.speed * dt;
     this.x += Math.cos(this.yaw) * dist;
     this.z -= Math.sin(this.yaw) * dist;
-    if (this.scene.terrain && this.scene.terrain.ready) {
-      this.y = this.scene.terrain.heightAt(this.x, this.z);
-    }
+    this._collideWithMapBoundary(1.6 * this.scale);
+    if (this.scene.terrain && this.scene.terrain.ready) this.y = this.scene.terrain.heightAt(this.x, this.z);
     this._lastDist = dist;
   }
 
-  // Sample terrain at the four corners of the wagon footprint and derive
-  // body pitch/roll from the height deltas. Pivoting at the wagon centre
-  // (this.x/z) makes the front and back ends land on their own terrain
-  // heights without a separate Y compensation.
+  // Updates wagon pitch and roll from terrain height samples.
   _updateBodyOrientation(dt) {
     const terrain = this.scene.terrain;
     if (!terrain || !terrain.ready) return;
@@ -199,7 +185,6 @@ export class MyWagon extends CGFobject {
     const halfWidth = (BED_WIDTH * 0.5) * this.scale;
     const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
 
-    // Forward (+X local) maps to (cos, -sin) in world XZ; right (+Z local) maps to (sin, cos).
     const hFront = terrain.heightAt(this.x + cy * halfWB,    this.z - sy * halfWB);
     const hBack  = terrain.heightAt(this.x - cy * halfWB,    this.z + sy * halfWB);
     const hRight = terrain.heightAt(this.x + sy * halfWidth, this.z + cy * halfWidth);
@@ -212,7 +197,6 @@ export class MyWagon extends CGFobject {
     if (targetRoll  >  MAX_TILT) targetRoll  =  MAX_TILT;
     if (targetRoll  < -MAX_TILT) targetRoll  = -MAX_TILT;
 
-    // Frame-rate-independent exp-lerp: k = 1 - e^(-dt/tc).
     const k = 1 - Math.exp(-dt / TILT_SMOOTH_TC);
     this.pitch += (targetPitch - this.pitch) * k;
     this.roll  += (targetRoll  - this.roll)  * k;
@@ -234,6 +218,20 @@ export class MyWagon extends CGFobject {
     if (this._collideWithRocks(wagonRadius)) return;
     if (this._collideWithTrees(wagonRadius)) return;
     this._collideWithBarn(wagonRadius);
+  }
+
+  // Keeps the wagon inside the circular map boundary.
+  _collideWithMapBoundary(wagonRadius) {
+    const distSq = this.x * this.x + this.z * this.z;
+    const maxDist = MAP_BOUNDARY_RADIUS - wagonRadius;
+    if (distSq <= maxDist * maxDist) return false;
+
+    const dist = Math.sqrt(distSq) || 1;
+    this.x = (this.x / dist) * maxDist;
+    this.z = (this.z / dist) * maxDist;
+
+    if (this.invulnerabilityTimer <= 0) this._triggerCollisionFeedback();
+    return true;
   }
 
   // Checks circular collision against every rock.
@@ -264,8 +262,6 @@ export class MyWagon extends CGFobject {
       this._triggerCollisionDamage(10, 20);
       zone.isFallen = true;
       if (zone.flora && zone.animator) {
-        // Fall axis = impact_dir × +Y (right-hand rule), so the tree topples
-        // away from the wagon's approach direction.
         const len = Math.sqrt(distSq);
         const dirX = len > 0.001 ? -dx / len : 1;
         const dirZ = len > 0.001 ? -dz / len : 0;
@@ -277,8 +273,7 @@ export class MyWagon extends CGFobject {
     return false;
   }
 
-  // Circle-vs-OBB collision: rotate the wagon centre into the barn's local
-  // frame, clamp to the half-extents, then check distance to the clamped point.
+  // Checks collision against the barn box.
   _collideWithBarn(wagonRadius) {
     const barn = this.scene.barn;
     if (!barn) return false;
@@ -416,16 +411,19 @@ export class MyWagon extends CGFobject {
     }
   }
 
-  // Applies random collision damage, knockback, invulnerability, and camera shake.
+  // Applies knockback, invulnerability, and camera shake.
+  _triggerCollisionFeedback() {
+    this.invulnerabilityTimer = COLLISION_IFRAMES_S;
+    this.speed = -MAX_SPEED * KNOCKBACK_FRAC;
+    this.scene.cameraShake = 1.0;
+  }
+
+  // Applies random damage and shared collision feedback.
   _triggerCollisionDamage(minDmg, maxDmg) {
     const dmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
     this.hp = Math.max(0, this.hp - dmg);
     this.scene.uiDamage = dmg;
-    this.invulnerabilityTimer = COLLISION_IFRAMES_S;
-
-    // Knockback: reverses speed so the player gets a moment of free space.
-    this.speed = -MAX_SPEED * KNOCKBACK_FRAC;
-    this.scene.cameraShake = 1.0;
+    this._triggerCollisionFeedback();
   }
 
   // Draws the full wagon assembly in wagon-local space.
