@@ -10,34 +10,44 @@ import { MyBarn } from "./elements/MyBarn.js";
 import { MyCameraAnimator } from "./animators/MyCameraAnimator.js";
 import { MyTreeAnimator } from "./animators/MyTreeAnimator.js";
 import { MyUnitCube } from "./geometric/MyUnitCube.js";
-import { MyCylinder } from "./geometric/MyCylinder.js";
-import { MyCircle } from "./geometric/MyCircle.js";
 import { MySphere } from "./geometric/MySphere.js";
 import { MyHayBale } from "./elements/MyHayBale.js";
 import { MyArrow } from "./elements/MyArrow.js";
 import { r } from "./utils.js";
 
-const SUN_WORLD_DIR  = [-112.0, 135.0, -100.0];
-const MAP_HALF       = 150;
+// Lighting: sun direction in world space.
+const SUN_WORLD_DIR = [-112.0, 135.0, -100.0];
+
+// Map and culling: 1- map half-size  2/3- general draw distance  4/5- bale draw distance
+const MAP_HALF          = 150;
 const DRAW_DIST         = 135;
 const DRAW_DIST_SQ      = DRAW_DIST * DRAW_DIST;
 const BALE_DRAW_DIST    = 85;
 const BALE_DRAW_DIST_SQ = BALE_DRAW_DIST * BALE_DRAW_DIST;
+
+// Grass grid: 1- grid subdivisions  2- total grass map size
 const GRASS_GRID     = 9;
 const GRASS_MAP_SIZE = 300;
-const MAX_TREES      = 12;   // must match MAX_TREES in terrain.frag
 
+// Terrain shader: must match MAX_TREES in terrain.frag.
+const MAX_TREES = 12;
+
+// Wagon spawn: 1- forward offset from barn  2- right offset from barn
 const WAGON_SPAWN_FORWARD = 25.0;
 const WAGON_SPAWN_RIGHT   = 0.0;
-const MAX_SPAWN_ATTEMPTS  = 80;
+
+// Spawn validation: 1- random attempts  2- barn clearance  3- wagon clearance
+const MAX_SPAWN_ATTEMPTS    = 80;
 const BARN_CLEARANCE_RADIUS  = 14.0;
 const WAGON_CLEARANCE_RADIUS = 5.0;
 
 export class MyScene extends CGFscene {
+  // Creates the scene object.
   constructor() {
     super();
   }
 
+  // Initializes cameras, lights, resources, state, and input.
   init(application) {
     super.init(application);
 
@@ -75,14 +85,13 @@ export class MyScene extends CGFscene {
     this._initHUD();
     this._initInputListeners();
 
-    // Intro camera swoops from 60 units up to ground level when the player
-    // dismisses the menu. Starts inactive; startGame() enables it.
     this.introAnimator     = new MyCameraAnimator(this, 60, 4.0, 4.0);
     this.introCameraOffset = 60;
 
     this.setUpdatePeriod(16);
   }
 
+  // Initializes scene visibility toggles.
   _initDisplayToggles() {
     this.displayAxis     = false;
     this.displayHUD      = true;
@@ -97,6 +106,7 @@ export class MyScene extends CGFscene {
     this.freeCamera      = false;
   }
 
+  // Initializes procedural generation parameters.
   _initGenerationParams() {
     this.numRocks    = 20;
     this.numHaybales = 3;
@@ -117,6 +127,7 @@ export class MyScene extends CGFscene {
     this.barnYaw  = Math.PI / 2;
   }
 
+  // Initializes gameplay state values.
   _initGameplayState() {
     this.uiHp             = 150;
     this.uiDamage         = 0;
@@ -129,6 +140,7 @@ export class MyScene extends CGFscene {
     this.cameraShake      = 0;
   }
 
+  // Caches HUD DOM nodes and render sentinels.
   _initHUD() {
     this.hudContainerEl       = document.getElementById('hud-container');
     this.hpNumEl              = document.getElementById('hp-number');
@@ -141,15 +153,13 @@ export class MyScene extends CGFscene {
 
     if (this.hudContainerEl) this.hudContainerEl.style.display = 'none';
 
-    // Sentinel values force the first HUD write so initial state is rendered.
     this.lastRenderedHp      = -1;
     this.lastRenderedScore   = -1;
     this.lastRenderedBales   = -1;
   }
 
+  // Registers global keyboard shortcuts.
   _initInputListeners() {
-    // Listen on document, not the CGF canvas: HTML overlays (menu, HUD,
-    // game-over screen) steal focus and would swallow canvas-level events.
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space' && this.menuActive) {
         e.preventDefault();
@@ -159,6 +169,8 @@ export class MyScene extends CGFscene {
       if (e.code === 'KeyF') this.freeCamera = !this.freeCamera;
     });
   }
+
+  // ---------- World generation ----------
 
   // Rebuilds all randomly placed scene objects.
   scatter() {
@@ -247,14 +259,11 @@ export class MyScene extends CGFscene {
       if (!point) continue;
       const [cx, cz] = point;
 
-      // One color per cluster reads as a uniform floral patch.
       const clusterColor = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
       this.flowerClusters.push({ x: cx, z: cz, radius: this.flowerClusterRadius });
 
       for (let f = 0; f < flowersPerCluster; f++) {
         const angle = r(0, Math.PI * 2);
-        // Sqrt-distance for uniform area distribution; 0.85 lets the cluster
-        // edge bleed slightly past the registered radius for a soft border.
         const dist = Math.sqrt(Math.random()) * (this.flowerClusterRadius * 0.85);
         const fx = cx + Math.cos(angle) * dist;
         const fz = cz + Math.sin(angle) * dist;
@@ -272,7 +281,6 @@ export class MyScene extends CGFscene {
       }
     }
 
-    // Single VBO across every flower in every cluster — one draw call total.
     if (toBatch.length > 0) this.flowerBatch = new MyFloraBatch(this, toBatch);
   }
 
@@ -305,7 +313,6 @@ export class MyScene extends CGFscene {
 
   // Sends tree positions to the terrain shader.
   _pushTreePositionsToShader() {
-    // terrain.frag's decay-leaves overlay fades by distance from each trunk.
     const treePos   = new Array(MAX_TREES * 2).fill(0);
     const treeCount = Math.min(this.treeZones.length, MAX_TREES);
     for (let i = 0; i < treeCount; i++) {
@@ -343,13 +350,13 @@ export class MyScene extends CGFscene {
       for (let j = 0; j < GRASS_GRID; j++) {
         const cx = -MAP_HALF + step / 2 + i * step;
         const cz = -MAP_HALF + step / 2 + j * step;
-        // Circular map: drop patches whose centre lies outside the disc.
         if (cx * cx + cz * cz > MAP_HALF * MAP_HALF) continue;
         this.grassPatches.push(new MyGrass(this, this.grassShader, this.terrain, cx, cz, step));
       }
     }
   }
 
+  // ---------- Spawn validation ----------
 
   // Finds a random free point inside the given rectangle.
   _findFreeSpawnPoint(minX, maxX, minZ, maxZ, radius, options = {}) {
@@ -477,9 +484,10 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // ---------- CGF setup ----------
+
+  // Initializes the directional sun light.
   initLights() {
-    // Directional sun (w=0). Position is the world-space sun direction; the
-    // wagon and terrain shaders transform it into eye space each frame.
     this.lights[0].setPosition(SUN_WORLD_DIR[0], SUN_WORLD_DIR[1], SUN_WORLD_DIR[2], 0.0);
     this.lights[0].setDiffuse(1.0, 0.98, 0.9, 1.0);
     this.lights[0].setSpecular(1.0, 0.98, 0.9, 1.0);
@@ -488,6 +496,7 @@ export class MyScene extends CGFscene {
     this.lights[0].update();
   }
 
+  // Initializes the main camera.
   initCameras() {
     this.camera = new CGFcamera(
       1.0,                            // FOV
@@ -498,9 +507,9 @@ export class MyScene extends CGFscene {
     );
   }
 
+  // Loads scene textures and shared materials.
   initTextures() {
     this.panoramaTexture        = new CGFtexture(this, './resources/textures/environment/panorama.jpg');
-    this.cloudMap               = new CGFtexture(this, './resources/textures/environment/cloudMap.png');
     this.rockColorMap1          = new CGFtexture(this, './resources/textures/rocks/rockTexture1.jpg');
     this.rockColorMap2          = new CGFtexture(this, './resources/textures/rocks/rockTexture2.jpg');
     this.rockColorMap3          = new CGFtexture(this, './resources/textures/rocks/rockTexture3.jpg');
@@ -512,7 +521,6 @@ export class MyScene extends CGFscene {
     this.horseTexture           = new CGFtexture(this, './resources/Horse/Tex_Horse.png');
     this.barkTexture            = new CGFtexture(this, './resources/textures/rocks/rockTexture2.jpg');
     this.hayTexture             = new CGFtexture(this, './resources/textures/wagon/hay.jpg');
-    this.blankTexture           = new CGFtexture(this, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
     this.pebbleTexture          = new CGFtexture(this, './resources/textures/terrain/pebbles.jpg');
     this.flowerScatteredTexture = new CGFtexture(this, './resources/textures/terrain/flower_scattered.jpg');
     this.decayLeavesTexture     = new CGFtexture(this, './resources/textures/terrain/decayLeaves.jpg');
@@ -523,8 +531,6 @@ export class MyScene extends CGFscene {
     this.bedTexture             = new CGFtexture(this, './resources/textures/wagon/woodBed.jpg');
     this.darkWoodTexture        = new CGFtexture(this, './resources/textures/barn/dark_wood.png');
 
-    // One shared material across all haybales; allocating new CGFappearance
-    // instances mid-game caused WebGL stutter on respawn.
     this.haybaleMaterial = new CGFappearance(this);
     this.haybaleMaterial.setAmbient(0.26, 0.20, 0.06, 1.0);
     this.haybaleMaterial.setDiffuse(0.80, 0.65, 0.20, 1.0);
@@ -534,13 +540,13 @@ export class MyScene extends CGFscene {
     this.haybaleMaterial.setTextureWrap('REPEAT', 'REPEAT');
   }
 
+  // Creates reusable primitive meshes.
   initPrimitives() {
     this.cube       = new MyUnitCube(this);
-    this.cylinder   = new MyCylinder(this, 24, 1);
-    this.circle     = new MyCircle(this, 24);
     this.rockSphere = new MySphere(this, 0.5, 16, 8, false, 1, 0);
   }
 
+  // Creates custom shaders.
   initShaders() {
     this.panoramaShader = new CGFshader(this.gl, "./shaders/sky.vert", "./shaders/sky.frag");
     this.panoramaShader.setUniformsValues({ uSampler: 0, time: 0 });
@@ -562,6 +568,7 @@ export class MyScene extends CGFscene {
     this.arrowShader = new CGFshader(this.gl, "./shaders/arrow.vert", "./shaders/arrow.frag");
   }
 
+  // Restores the default material for non-custom rendering.
   setDefaultAppearance() {
     this.setAmbient(0.16, 0.16, 0.17, 1.0);
     this.setDiffuse(0.8, 0.8, 0.8, 1.0);
@@ -569,6 +576,9 @@ export class MyScene extends CGFscene {
     this.setShininess(10.0);
   }
 
+  // ---------- Update loop ----------
+
+  // Updates animations, gameplay, UI, and shaders.
   update(t) {
     if (this.startTime === undefined) this.startTime = t;
     const prevTime = this.time ?? 0;
@@ -584,8 +594,6 @@ export class MyScene extends CGFscene {
 
     const isIntroActive = this.introAnimator && this.introAnimator.active;
     if (isIntroActive) {
-      // Terrain heightmap loads async; once it's in, snap the wagon and
-      // horses up to ground level so they don't render half-buried.
       if (this.terrain && this.terrain.ready) {
         this.wagon.y = this.terrain.heightAt(this.wagon.x, this.wagon.z);
         this.wagon._updateHorsePositions();
@@ -607,10 +615,8 @@ export class MyScene extends CGFscene {
     this._syncHUD();
   }
 
+  // Updates grass shader wind and interaction uniforms.
   _updateGrassUniforms() {
-    // Wind is the product of two slow sines at coprime periods, biased toward
-    // its peak by Math.pow with exponent <1 — gusts plateau at full strength
-    // before dropping, instead of looking like a clean sine.
     const rawBreath  = 0.5 + 0.5 * Math.sin(this.time * 0.5);
     const windBreath = Math.pow(rawBreath, 0.25);
     const windGust   = 0.6 + 0.4 * Math.sin(this.time * 1.1 + 1.3);
@@ -622,8 +628,6 @@ export class MyScene extends CGFscene {
     if (this.wagon && this.wagon.horses && this.wagon.horses.length > 0) {
       pHorse = [this.wagon.horses[0].x, this.wagon.horses[0].z];
 
-      // Wheel offsets duplicated from MyWagon — keep matched if BED_LENGTH /
-      // BED_WIDTH / WHEEL_THICKNESS / scale change there.
       const cy = Math.cos(this.wagon.yaw);
       const sy = Math.sin(this.wagon.yaw);
       const wx = 8.0 * 0.35 * this.wagon.scale;
@@ -650,6 +654,7 @@ export class MyScene extends CGFscene {
     });
   }
 
+  // Updates active tree falling animations.
   _updateTreeAnimators(dt) {
     if (!this.treeZones) return;
     for (let i = this.treeZones.length - 1; i >= 0; i--) {
@@ -657,8 +662,6 @@ export class MyScene extends CGFscene {
       if (zone.animator && zone.animator.active) {
         zone.animator.update(this.time);
       } else if (zone.isFallen) {
-        // Hold the felled tree on screen for 2 s, then drop it entirely so
-        // the player can drive through.
         zone.disappearTimer = (zone.disappearTimer || 0) + dt;
         if (zone.disappearTimer > 2.0) {
           const fIndex = this.floras.indexOf(zone.flora);
@@ -669,10 +672,10 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Updates barn position, drop-off state, and delivered bales.
   _updateBarn() {
     if (!this.barn) return;
 
-    // Keep barn synced to the GUI sliders even mid-game.
     this.barn.x   = this.barnPosX;
     this.barn.z   = this.barnPosZ;
     this.barn.y   = this.terrain.heightAt(this.barnPosX, this.barnPosZ);
@@ -681,8 +684,6 @@ export class MyScene extends CGFscene {
     const wagonRadius = 1.6 * this.wagon.scale;
     this.barn.checkWagonIntersection(this.wagon.x, this.wagon.z, wagonRadius);
 
-    // A bale sets _justLanded for exactly one frame when its drop animation
-    // ends. We test if it landed inside the barn drop-off circle.
     let totalRestored = 0;
     for (let i = this.haybales.length - 1; i >= 0; i--) {
       const bale = this.haybales[i];
@@ -700,6 +701,7 @@ export class MyScene extends CGFscene {
     if (totalRestored > 0) this.uiRestored = totalRestored;
   }
 
+  // Shows or hides the HUD according to the GUI toggle.
   _showHUDIfEnabled() {
     if (!this.hudContainerEl) return;
     const wantsShown = this.displayHUD;
@@ -709,6 +711,7 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Synchronizes gameplay values with the HUD state.
   _syncGameplayUI() {
     this.uiHp    = Math.ceil(this.wagon.hp);
     this.uiScore = Math.floor(this.gameplayTime);
@@ -723,6 +726,7 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Opens the game-over screen when HP reaches zero.
   _checkGameOver() {
     if (this.wagon.hp <= 0 && !this.gameOver) {
       this.wagon.hp = 0;
@@ -731,7 +735,7 @@ export class MyScene extends CGFscene {
     }
   }
 
-  // Diffed against last-rendered values so we don't thrash the DOM each frame.
+  // Writes changed HUD values to the DOM.
   _syncHUD() {
     const hpInt = Math.ceil(this.wagon.hp);
     if (hpInt !== this.lastRenderedHp && this.hpNumEl && this.hpBarEl) {
@@ -751,12 +755,14 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Returns the health bar gradient for the current HP percent.
   _hpBarGradient(pct) {
     if (pct > 50) return 'linear-gradient(90deg, #4caf50, #8bc34a)';
     if (pct > 20) return 'linear-gradient(90deg, #ffb300, #ffd54f)';
     return 'linear-gradient(90deg, #e53935, #ef5350)';
   }
 
+  // Spawns animated floating UI text.
   spawnFloatingText(text, color) {
     if (!this.floatingTextAnchorEl) return;
 
@@ -770,6 +776,7 @@ export class MyScene extends CGFscene {
     setTimeout(() => el.parentNode && el.parentNode.removeChild(el), 1500);
   }
 
+  // Starts gameplay from the main menu.
   startGame() {
     if (!this.menuActive) return;
     this.menuActive = false;
@@ -783,6 +790,7 @@ export class MyScene extends CGFscene {
     if (this.introAnimator) this.introAnimator.enable(this.time);
   }
 
+  // Restarts the game world after game over.
   restartGame() {
     if (!this.terrain?.ready) return;
 
@@ -805,12 +813,14 @@ export class MyScene extends CGFscene {
     if (this.gameOverEl) this.gameOverEl.style.display = 'none';
   }
 
+  // ---------- Rendering ----------
+
+  // Draws the full scene.
   display() {
     if (this.introAnimator && this.introAnimator.active) {
       this.introAnimator.update(this.time || 0);
     }
 
-    // Follow-cam runs at render rate (not the 60 Hz update tick) for smoothness.
     if (!this.freeCamera && this.wagon) this._updateFollowCamera();
 
     this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
@@ -847,27 +857,23 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Updates the follow camera position and target.
   _updateFollowCamera() {
     const w      = this.wagon;
     const introY = this.introCameraOffset || 0;
 
-    // Elastic camera lag: pulls back up to 1.5 units at top speed (8.0 = MAX_SPEED).
     const speedLag = (w.speed / 8.0) * 1.5;
 
-    // Collision shake: decays per render frame.
     let shakeY = 0;
     if (this.cameraShake > 0) {
       shakeY = Math.sin(this.time * 40) * this.cameraShake;
       this.cameraShake = Math.max(0, this.cameraShake - 0.05);
     }
 
-    // Intro phase pulls the camera high and aims at the horizon, then settles
-    // onto the wagon as introY decays toward 0.
     const CAM_DIST   = 18 + speedLag + introY * 0.4;
     const CAM_HEIGHT =  9 + introY    + shakeY;
     const CAM_LOOK   = 3.0 + introY * 1.0 + shakeY * 0.5;
 
-    // Centrifugal lean: shift camera laterally into the turn.
     const lean = w.steeringAngle * 3;
     const rx = Math.sin(w.yaw);
     const rz = Math.cos(w.yaw);
@@ -878,20 +884,16 @@ export class MyScene extends CGFscene {
     vec3.set(this.camera.position, bx, w.y + CAM_HEIGHT, bz);
     vec3.set(this.camera.target,   w.x, w.y + CAM_LOOK,  w.z);
 
-    // Speed-zoom: open the FOV slightly under throttle to telegraph speed.
     this.camera.fov = 1.0 + (w.speed / 8.0) * 0.08;
   }
 
+  // Sends the sun direction to custom shaders.
   _updateLightingUniforms() {
-    // Transform world-space sun direction into eye space for the custom
-    // shaders (rock, branch, cloth, terrain) — they take eye-space lighting.
     const sunWorld = vec4.fromValues(SUN_WORLD_DIR[0], SUN_WORLD_DIR[1], SUN_WORLD_DIR[2], 0.0);
     const sunEye   = vec4.create();
     vec4.transformMat4(sunEye, sunWorld, this.camera.getViewMatrix());
     const lp = [sunEye[0], sunEye[1], sunEye[2]];
 
-    // Normalize on the CPU once — fragment shaders read it as-is and skip
-    // a per-pixel normalize.
     const len = Math.sqrt(lp[0] * lp[0] + lp[1] * lp[1] + lp[2] * lp[2]);
     const ld  = [lp[0] / len, lp[1] / len, lp[2] / len];
 
@@ -903,6 +905,7 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Draws the panorama sphere.
   _displaySky() {
     this.setActiveShader(this.panoramaShader);
     this.panoramaTexture.bind(0);
@@ -910,6 +913,7 @@ export class MyScene extends CGFscene {
     this.setActiveShader(this.defaultShader);
   }
 
+  // Draws visible rocks with the rock shader.
   _displayRocks(cx, cz) {
     this.setActiveShader(this.rockShader);
     this.rockNoiseMap.bind(2);
@@ -920,6 +924,7 @@ export class MyScene extends CGFscene {
     this.setActiveShader(this.defaultShader);
   }
 
+  // Draws visible trees and flower batches.
   _displayFlora(cx, cz) {
     this.setActiveShader(this.branchShader);
     this.branchShader.setUniformsValues({ uLength: 1.0 });
@@ -947,6 +952,7 @@ export class MyScene extends CGFscene {
     this.setActiveShader(this.defaultShader);
   }
 
+  // Draws hay bales and their guide arrows.
   _displayHayBales(cx, cz) {
     const nearBales = [];
     const farBales  = [];
@@ -961,13 +967,11 @@ export class MyScene extends CGFscene {
       else if (distSq < DRAW_DIST_SQ)      farBales.push(bale);
     }
 
-    // Pass 1: bale meshes (near only).
     if (nearBales.length > 0) {
       this.setActiveShader(this.defaultShader);
       for (const bale of nearBales) bale.display();
     }
 
-    // Pass 2: arrows over all visible bales (near + far).
     if (this.displayArrows && this.arrow) {
       let arrowShaderActive = false;
       const allVisible = nearBales.concat(farBales);
@@ -987,6 +991,7 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Draws all grass patches.
   _displayGrass() {
     this.setActiveShader(this.grassShader);
     this.gl.disable(this.gl.CULL_FACE);
