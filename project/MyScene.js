@@ -145,7 +145,6 @@ export class MyScene extends CGFscene {
     this.lastRenderedHp      = -1;
     this.lastRenderedScore   = -1;
     this.lastRenderedBales   = -1;
-    this.lastRenderedCarried = -1;
   }
 
   _initInputListeners() {
@@ -746,15 +745,9 @@ export class MyScene extends CGFscene {
       this.lastRenderedScore = this.uiScore;
       this.scoreValEl.innerText = this.uiScore;
     }
-    // Bale counter shows delivered + currently carried, so it ticks up the
-    // moment the player picks one up rather than waiting for delivery.
-    const carriedCount = this.wagon.carriedBales.length;
-    const balesChanged = this.uiBalesDelivered !== this.lastRenderedBales
-                      || carriedCount         !== this.lastRenderedCarried;
-    if (balesChanged && this.balesValEl) {
+    if (this.uiBalesDelivered !== this.lastRenderedBales && this.balesValEl) {
       this.lastRenderedBales   = this.uiBalesDelivered;
-      this.lastRenderedCarried = carriedCount;
-      this.balesValEl.innerText = this.uiBalesDelivered + carriedCount;
+      this.balesValEl.innerText = this.uiBalesDelivered;
     }
   }
 
@@ -802,7 +795,6 @@ export class MyScene extends CGFscene {
     this.lastRenderedBales   = -1;
     this.lastRenderedScore   = -1;
     this.lastRenderedHp      = -1;
-    this.lastRenderedCarried = -1;
     this.gameplayTime        = 0;
 
     this.gameOver   = false;
