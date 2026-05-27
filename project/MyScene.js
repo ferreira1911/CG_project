@@ -29,6 +29,9 @@ const MAX_TREES      = 12;   // must match MAX_TREES in terrain.frag
 
 const WAGON_SPAWN_FORWARD = 25.0;
 const WAGON_SPAWN_RIGHT   = 0.0;
+const MAX_SPAWN_ATTEMPTS  = 80;
+const BARN_CLEARANCE_RADIUS  = 14.0;
+const WAGON_CLEARANCE_RADIUS = 5.0;
 
 export class MyScene extends CGFscene {
   constructor() {
@@ -158,6 +161,7 @@ export class MyScene extends CGFscene {
     });
   }
 
+  // Rebuilds all randomly placed scene objects.
   scatter() {
     this.rocks          = [];
     this.floras         = [];
@@ -176,6 +180,7 @@ export class MyScene extends CGFscene {
     this._spawnGrassPatches();
   }
 
+  // Places the barn and the starting wagon position.
   _spawnBarnAndWagon() {
     const barnY = this.terrain.heightAt(this.barnPosX, this.barnPosZ);
     this.barn = new MyBarn(this, this.barnPosX, barnY, this.barnPosZ, this.barnYaw, {
@@ -196,6 +201,7 @@ export class MyScene extends CGFscene {
     this.wagon = new MyWagon(this, wagonX, this.terrain.heightAt(wagonX, wagonZ), wagonZ, this.barnYaw, 1.0, this.horseTexture);
   }
 
+  // Spawns rocks away from paths and existing solid objects.
   _spawnRocks() {
     const rockTextures = [this.rockColorMap1, this.rockColorMap2, this.rockColorMap3];
     const rockNormals  = [this.rockNormalMap1, this.rockNormalMap2, this.rockNormalMap3];
@@ -209,17 +215,9 @@ export class MyScene extends CGFscene {
       const sy = baseXZ * r(0.65, 0.80);
 
       const clearance = Math.max(sx, sz) * 0.5 + 0.5;
-      
-      let x, z, attempts = 0;
-
-
-      do {
-        x = r(-100, 100);
-        z = r(-100, 100);
-        attempts++;
-
-
-      } while (this.isLocationOccupied(x, z, clearance) && attempts < 50);
+      const point = this._findFreeSpawnPoint(-100, 100, -100, 100, clearance);
+      if (!point) continue;
+      const [x, z] = point;
       const y = this.terrain.heightAt(x, z);
 
       const matIdx = Math.floor(r(0, rockTextures.length));
@@ -232,6 +230,7 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Spawns flower patches, then bakes all flowers into one batch.
   _spawnFlowerClusters() {
     const FLOWER_COLORS = [
       [0.2, 0.4, 0.9],
@@ -245,15 +244,9 @@ export class MyScene extends CGFscene {
     const toBatch = [];
 
     for (let c = 0; c < this.numFlowerClusters; c++) {
-      let cx, cz, attempts = 0;
-
-
-      do {
-        cx = r(-90, 90);
-        cz = r(-90, 90);
-        attempts++;
-
-      } while (this.isLocationOccupied(cx, cz, this.flowerClusterRadius) && attempts < 50);
+      const point = this._findFreeSpawnPoint(-90, 90, -90, 90, this.flowerClusterRadius);
+      if (!point) continue;
+      const [cx, cz] = point;
 
       // One color per cluster reads as a uniform floral patch.
       const clusterColor = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
@@ -267,13 +260,8 @@ export class MyScene extends CGFscene {
         const fx = cx + Math.cos(angle) * dist;
         const fz = cz + Math.sin(angle) * dist;
 
-
-
-
-        if (this.isLocationOccupied(fx, fz, 0.5)) continue;
-
-
-
+        // Ignore flower clusters here so the current cluster does not block itself.
+        if (this.isLocationOccupied(fx, fz, 0.5, { checkFlowerClusters: false })) continue;
 
         const fy = this.terrain.heightAt(fx, fz);
         toBatch.push(new MyFlora(
@@ -289,26 +277,15 @@ export class MyScene extends CGFscene {
     if (toBatch.length > 0) this.flowerBatch = new MyFloraBatch(this, toBatch);
   }
 
+  // Spawns trees away from paths and other generated objects.
   _spawnTrees() {
     for (let i = 0; i < this.numTrees; i++) {
-      let tx, tz, tries = 0, ok = false;
-      do {
-        tx = r(-110, 110);
-        tz = r(-110, 110);
-        tries++;
-        ok = this.terrain.isPathClear(tx, tz, 3.0);
-        if (ok) {
-          // Minimum 22-unit separation between trees so the forest looks sparse.
-          for (const zone of this.treeZones) {
-            const dx = tx - zone.x, dz = tz - zone.z;
-            if (dx * dx + dz * dz < 22 * 22) { ok = false; break; }
-          }
-        }
-      } while (!ok && tries < 30);
-      if (!ok) continue;
-
-      const ty = this.terrain.heightAt(tx, tz);
       const scale = r(2, 3);
+      const treeRadius = 2.0 * scale;
+      const point = this._findFreeSpawnPoint(-110, 110, -110, 110, treeRadius);
+      if (!point) continue;
+      const [tx, tz] = point;
+      const ty = this.terrain.heightAt(tx, tz);
       const treeFlora = new MyFlora(
         this, tx, ty, tz, scale,
         3, 28, 1.6, 0.78, 0.28, 0.72, 22,
@@ -319,7 +296,7 @@ export class MyScene extends CGFscene {
 
       this.treeZones.push({
         x: tx, z: tz,
-        radius: 2.0 * scale,
+        radius: treeRadius,
         flora: treeFlora,
         animator: new MyTreeAnimator(treeFlora, 1.5),
         isFallen: false,
@@ -327,6 +304,7 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Sends tree positions to the terrain shader.
   _pushTreePositionsToShader() {
     // terrain.frag's decay-leaves overlay fades by distance from each trunk.
     const treePos   = new Array(MAX_TREES * 2).fill(0);
@@ -343,6 +321,7 @@ export class MyScene extends CGFscene {
     }
   }
 
+  // Creates the grass shader and its default uniforms.
   _initGrassShader() {
     this.grassShader = new CGFshader(this.gl, 'shaders/grass.vert', 'shaders/grass.frag');
     this.grassShader.setUniformsValues({
@@ -358,6 +337,7 @@ export class MyScene extends CGFscene {
     });
   }
 
+  // Spawns baked grass patches over the terrain grid.
   _spawnGrassPatches() {
     const step = GRASS_MAP_SIZE / GRASS_GRID;
     for (let i = 0; i < GRASS_GRID; i++) {
@@ -372,82 +352,124 @@ export class MyScene extends CGFscene {
   }
 
 
-  isLocationOccupied(x, z, radius = 0) {
+  // Finds a random free point inside the given rectangle.
+  _findFreeSpawnPoint(minX, maxX, minZ, maxZ, radius, options = {}) {
+    for (let i = 0; i < MAX_SPAWN_ATTEMPTS; i++) {
+      const x = r(minX, maxX);
+      const z = r(minZ, maxZ);
+      if (!this.isLocationOccupied(x, z, radius, options)) return [x, z];
+    }
+    return null;
+  }
 
-    if (this.terrain && !this.terrain.isPathClear(x, z, radius)) return true;
+  // Checks if a point overlaps terrain restrictions or generated objects.
+  isLocationOccupied(x, z, radius = 0, options = {}) {
+    const {
+      checkTerrain = true,
+      checkBarn = true,
+      checkWagon = true,
+      checkRocks = true,
+      checkHaybales = true,
+      checkTrees = true,
+      checkFlowerClusters = true,
+    } = options;
 
-    const barnDX = x - this.barnPosX;
-    const barnDZ = z - this.barnPosZ;
-    
-    
-    if (barnDX * barnDX + barnDZ * barnDZ < (radius + 14) * (radius + 14)) return true;
+    if (checkTerrain && this.terrain && !this.terrain.isPathClear(x, z, radius)) return true;
 
-
-
-    if (this.wagon) {
-        const wagonDX = x - this.wagon.x;
-        const wagonDZ = z - this.wagon.z;
-        if (wagonDX * wagonDX + wagonDZ * wagonDZ < (radius + 5) * (radius + 5)) return true;
+    if (checkBarn) {
+      const dx = x - this.barnPosX, dz = z - this.barnPosZ;
+      if (this._circlesOverlap(dx, dz, radius, BARN_CLEARANCE_RADIUS)) return true;
     }
 
-    
-    
-    for (const rock of this.rocks) {
+    if (checkWagon && this.wagon) {
+      const dx = x - this.wagon.x, dz = z - this.wagon.z;
+      if (this._circlesOverlap(dx, dz, radius, WAGON_CLEARANCE_RADIUS)) return true;
+    }
+
+    if (checkRocks) {
+      for (const rock of this.rocks) {
         const dx = x - rock.x, dz = z - rock.z;
-        const rR = Math.max(rock.sx, rock.sz) * 0.7 + 0.5;
-        if (dx * dx + dz * dz < (radius + rR) * (radius + rR)) return true;
+        const rockR = Math.max(rock.sx, rock.sz) * 0.7 + 0.5;
+        if (this._circlesOverlap(dx, dz, radius, rockR)) return true;
+      }
     }
 
-    
-    
-    for (const hb of this.haybales) {
-
+    if (checkHaybales) {
+      for (const hb of this.haybales) {
         const dx = x - hb.x, dz = z - hb.z;
-        const hbR = (hb.scale || 1.0) * 1.5;
-        if (dx * dx + dz * dz < (radius + hbR) * (radius + hbR)) return true;
+        const baleR = (hb.scale || 1.0) * 1.5;
+        if (this._circlesOverlap(dx, dz, radius, baleR)) return true;
+      }
     }
 
-    
-    
-    for (const zone of this.treeZones) {
+    if (checkTrees) {
+      for (const zone of this.treeZones) {
         const dx = x - zone.x, dz = z - zone.z;
         const treeR = zone.radius || 2.0;
-        
-        
-        if (dx * dx + dz * dz < (radius + treeR) * (radius + treeR)) return true;
+        if (this._circlesOverlap(dx, dz, radius, treeR)) return true;
+      }
     }
 
-    
-    
-    for (const cluster of this.flowerClusters) {
+    if (checkFlowerClusters) {
+      for (const cluster of this.flowerClusters) {
         const dx = x - cluster.x, dz = z - cluster.z;
-        
-        if (dx * dx + dz * dz < (radius + cluster.radius) * (radius + cluster.radius)) return true;
+        if (this._circlesOverlap(dx, dz, radius, cluster.radius)) return true;
+      }
     }
 
     return false;
   }
 
-  isGrassSpawnBlocked(x, z) {
-    return this.isLocationOccupied(x, z, -0.5);
-
-
+  // Checks overlap between two circles from their delta and radii.
+  _circlesOverlap(dx, dz, rA, rB) {
+    const rSum = rA + rB;
+    return dx * dx + dz * dz < rSum * rSum;
   }
 
-  spawnHayBale() {
-    let bx, bz, attempts = 0;
-    do {
-      bx = r(-80, 80);
-      bz = r(-80, 80);
-      attempts++;
-    } while (!this.terrain.isPathClear(bx, bz, 2.0) && attempts < 50);
+  // Called by MyGrass to avoid paths and solid scene objects.
+  isGrassSpawnBlocked(x, z) {
+    if (this.terrain && !this.terrain.isPathClearFast(x, z)) return true;
 
+    for (const rock of this.rocks) {
+      const dx = x - rock.x, dz = z - rock.z;
+      const radius = Math.max(rock.sx, rock.sz) * 0.85;
+      if (dx * dx + dz * dz < radius * radius) return true;
+    }
+
+    for (const hb of this.haybales) {
+      const dx = x - hb.x, dz = z - hb.z;
+      const radius = (hb.scale || 1.0) * 1.75;
+      if (dx * dx + dz * dz < radius * radius) return true;
+    }
+
+    for (const zone of this.treeZones) {
+      const dx = x - zone.x, dz = z - zone.z;
+      if (dx * dx + dz * dz < zone.radius * zone.radius) return true;
+    }
+
+    for (const cluster of this.flowerClusters) {
+      const dx = x - cluster.x, dz = z - cluster.z;
+      const radius = cluster.radius * 0.82;
+      if (dx * dx + dz * dz < radius * radius) return true;
+    }
+
+    return false;
+  }
+
+  // Spawns one hay bale away from paths and existing objects.
+  spawnHayBale() {
+    const scale = r(0.8, 1.3);
+    const clearance = scale * 1.75;
+    const point = this._findFreeSpawnPoint(-80, 80, -80, 80, clearance);
+    if (!point) return;
+
+    const [bx, bz] = point;
     const by    = this.terrain.heightAt(bx, bz);
     const rotY  = r(0, Math.PI * 2);
-    const scale = r(0.8, 1.3);
     this.haybales.push(new MyHayBale(this, bx, by, bz, rotY, scale, this.haybaleMaterial));
   }
 
+  // Replaces a delivered bale with a new valid one.
   replaceBale(bale) {
     const index = this.haybales.indexOf(bale);
     if (index !== -1) {
