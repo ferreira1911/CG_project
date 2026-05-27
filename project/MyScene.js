@@ -209,11 +209,17 @@ export class MyScene extends CGFscene {
       const sy = baseXZ * r(0.65, 0.80);
 
       const clearance = Math.max(sx, sz) * 0.5 + 0.5;
-      let x, z;
+      
+      let x, z, attempts = 0;
+
+
       do {
         x = r(-100, 100);
         z = r(-100, 100);
-      } while (!this.terrain.isPathClear(x, z, clearance));
+        attempts++;
+
+
+      } while (this.isLocationOccupied(x, z, clearance) && attempts < 50);
       const y = this.terrain.heightAt(x, z);
 
       const matIdx = Math.floor(r(0, rockTextures.length));
@@ -239,11 +245,15 @@ export class MyScene extends CGFscene {
     const toBatch = [];
 
     for (let c = 0; c < this.numFlowerClusters; c++) {
-      let cx, cz;
+      let cx, cz, attempts = 0;
+
+
       do {
         cx = r(-90, 90);
         cz = r(-90, 90);
-      } while (!this.terrain.isPathClear(cx, cz, this.flowerClusterRadius));
+        attempts++;
+
+      } while (this.isLocationOccupied(cx, cz, this.flowerClusterRadius) && attempts < 50);
 
       // One color per cluster reads as a uniform floral patch.
       const clusterColor = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
@@ -257,7 +267,13 @@ export class MyScene extends CGFscene {
         const fx = cx + Math.cos(angle) * dist;
         const fz = cz + Math.sin(angle) * dist;
 
-        if (!this.terrain.isPathClear(fx, fz, 0.5)) continue;
+
+
+
+        if (this.isLocationOccupied(fx, fz, 0.5)) continue;
+
+
+
 
         const fy = this.terrain.heightAt(fx, fz);
         toBatch.push(new MyFlora(
@@ -355,42 +371,67 @@ export class MyScene extends CGFscene {
     }
   }
 
-  // Called by MyGrass during placement to keep blades out of solid objects.
-  isGrassSpawnBlocked(x, z) {
-    for (let i = 0; i < this.rocks.length; i++) {
-      const rock = this.rocks[i];
-      const dx = x - rock.x, dz = z - rock.z;
-      const radius = Math.max(rock.sx, rock.sz) * 0.85;
-      if (dx * dx + dz * dz < radius * radius) return true;
+
+  isLocationOccupied(x, z, radius = 0) {
+
+    if (this.terrain && !this.terrain.isPathClear(x, z, radius)) return true;
+
+    const barnDX = x - this.barnPosX;
+    const barnDZ = z - this.barnPosZ;
+    
+    
+    if (barnDX * barnDX + barnDZ * barnDZ < (radius + 14) * (radius + 14)) return true;
+
+
+
+    if (this.wagon) {
+        const wagonDX = x - this.wagon.x;
+        const wagonDZ = z - this.wagon.z;
+        if (wagonDX * wagonDX + wagonDZ * wagonDZ < (radius + 5) * (radius + 5)) return true;
     }
 
-    for (let i = 0; i < this.haybales.length; i++) {
-      const hb = this.haybales[i];
-      const dx = x - hb.x, dz = z - hb.z;
-      const radius = (hb.scale || 1.0) * 1.75;
-      if (dx * dx + dz * dz < radius * radius) return true;
+    
+    
+    for (const rock of this.rocks) {
+        const dx = x - rock.x, dz = z - rock.z;
+        const rR = Math.max(rock.sx, rock.sz) * 0.7 + 0.5;
+        if (dx * dx + dz * dz < (radius + rR) * (radius + rR)) return true;
     }
 
-    if (this.treeZones) {
-      for (let i = 0; i < this.treeZones.length; i++) {
-        const t = this.treeZones[i];
-        const dx = x - t.x, dz = z - t.z;
-        if (dx * dx + dz * dz < t.radius * t.radius) return true;
-      }
+    
+    
+    for (const hb of this.haybales) {
+
+        const dx = x - hb.x, dz = z - hb.z;
+        const hbR = (hb.scale || 1.0) * 1.5;
+        if (dx * dx + dz * dz < (radius + hbR) * (radius + hbR)) return true;
     }
 
-    if (this.flowerClusters) {
-      for (let i = 0; i < this.flowerClusters.length; i++) {
-        const cluster = this.flowerClusters[i];
+    
+    
+    for (const zone of this.treeZones) {
+        const dx = x - zone.x, dz = z - zone.z;
+        const treeR = zone.radius || 2.0;
+        
+        
+        if (dx * dx + dz * dz < (radius + treeR) * (radius + treeR)) return true;
+    }
+
+    
+    
+    for (const cluster of this.flowerClusters) {
         const dx = x - cluster.x, dz = z - cluster.z;
-        // 0.82 shrinks the exclusion radius so outer-ring flowers blend
-        // with grass instead of cutting a hard halo around the cluster.
-        const excl = cluster.radius * 0.82;
-        if (dx * dx + dz * dz < excl * excl) return true;
-      }
+        
+        if (dx * dx + dz * dz < (radius + cluster.radius) * (radius + cluster.radius)) return true;
     }
 
     return false;
+  }
+
+  isGrassSpawnBlocked(x, z) {
+    return this.isLocationOccupied(x, z, -0.5);
+
+
   }
 
   spawnHayBale() {
