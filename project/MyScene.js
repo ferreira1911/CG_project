@@ -51,7 +51,7 @@ export class MyScene extends CGFscene {
     this.gl.enable(this.gl.CULL_FACE);
     this.gl.depthFunc(this.gl.LEQUAL);
 
-    this.setGlobalAmbientLight(0.2, 0.2, 0.22, 1.0);
+    this.setGlobalAmbientLight(0.14, 0.14, 0.16, 1.0);
 
     this.initTextures();
     this.initPrimitives();
@@ -483,7 +483,7 @@ export class MyScene extends CGFscene {
     this.lights[0].setPosition(SUN_WORLD_DIR[0], SUN_WORLD_DIR[1], SUN_WORLD_DIR[2], 0.0);
     this.lights[0].setDiffuse(1.0, 0.98, 0.9, 1.0);
     this.lights[0].setSpecular(1.0, 0.98, 0.9, 1.0);
-    this.lights[0].setAmbient(0.18, 0.18, 0.2, 1.0);
+    this.lights[0].setAmbient(0.10, 0.10, 0.12, 1.0);
     this.lights[0].enable();
     this.lights[0].update();
   }
@@ -526,7 +526,7 @@ export class MyScene extends CGFscene {
     // One shared material across all haybales; allocating new CGFappearance
     // instances mid-game caused WebGL stutter on respawn.
     this.haybaleMaterial = new CGFappearance(this);
-    this.haybaleMaterial.setAmbient(0.45, 0.35, 0.10, 1.0);
+    this.haybaleMaterial.setAmbient(0.26, 0.20, 0.06, 1.0);
     this.haybaleMaterial.setDiffuse(0.80, 0.65, 0.20, 1.0);
     this.haybaleMaterial.setSpecular(0.05, 0.05, 0.02, 1.0);
     this.haybaleMaterial.setShininess(8);
@@ -563,7 +563,7 @@ export class MyScene extends CGFscene {
   }
 
   setDefaultAppearance() {
-    this.setAmbient(0.22, 0.22, 0.22, 1.0);
+    this.setAmbient(0.16, 0.16, 0.17, 1.0);
     this.setDiffuse(0.8, 0.8, 0.8, 1.0);
     this.setSpecular(0.1, 0.1, 0.1, 1.0);
     this.setShininess(10.0);

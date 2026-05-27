@@ -81,7 +81,7 @@ void main() {
     // Slightly stronger directional lighting so the relief reads as terrain.
     vec3 lightDir = normalize(uLightPos);
     float diffuse = max(dot(normalize(terrainNormal), lightDir), 0.0);
-    float lighting = 0.38 + 0.62 * diffuse;
+    float lighting = 0.28 + 0.72 * diffuse;
 
     vec3 shadedColor = texColor.rgb * lighting;
     vec3 finalColor = mix(texColor.rgb, shadedColor, 0.68);

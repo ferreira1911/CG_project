@@ -19,7 +19,7 @@ void main() {
     float d = dot(normalize(vNormal), uLightDir);
     float diffuse = max(d, 0.0);
     float backLight = max(-d, 0.0);
-    float lighting = 0.2 + 0.72 * diffuse + 0.08 * backLight;
+    float lighting = 0.14 + 0.78 * diffuse + 0.08 * backLight;
 
     gl_FragColor = vec4(color.rgb * lighting, color.a);
 }

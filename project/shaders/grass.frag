@@ -27,9 +27,9 @@ void main() {
 
     // Robust lighting: Normalize interpolated normal vector on-the-fly
     vec3 lightDir = normalize(vec3(0.5, 0.8, 0.3));
-    float diffuse = max(dot(normalize(vNormal), lightDir), 0.3);
+    float diffuse = max(dot(normalize(vNormal), lightDir), 0.22);
     
-    float ambient = 0.45; // Balanced ambient
+    float ambient = 0.30;
     
     gl_FragColor = vec4(color * (diffuse + ambient), 1.0);
 }
