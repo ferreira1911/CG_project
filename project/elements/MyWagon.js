@@ -5,8 +5,9 @@ import { MyWagonTongue } from './MyWagonTongue.js';
 import { MyWagonWheel }  from './MyWagonWheel.js';
 import { MyHorse }       from './MyHorse.js';
 import { MyDriver }      from './MyDriver.js';
-import { MyHorseAnimator }   from '../animators/MyHorseAnimator.js';
-import { MyHayBaleAnimator } from '../animators/MyHayBaleAnimator.js';
+import { MyHorseAnimator }    from '../animators/MyHorseAnimator.js';
+import { MyHayBaleAnimator }  from '../animators/MyHayBaleAnimator.js';
+import { MyDustParticleSystem } from './MyDustParticleSystem.js';
 
 // Wagon bed: 1- length along local +X  2- width along local +Z  3- floor/body height
 const BED_LENGTH         = 8.0;
@@ -92,7 +93,11 @@ export class MyWagon extends CGFobject {
     this._lPressedLast  = false;  // edge-detect for L (drop)
 
     // Y offset (in wagon-local space) where carried bales rest on the bed.
-    this.BALE_CARRY_Y = BACK_WHEEL_RADIUS + BED_HEIGHT;
+    this.BALE_CARRY_Y   = BACK_WHEEL_RADIUS + BED_HEIGHT;
+
+    // ── Dynamics & Particles ──────────────────────────────────────────────────
+    this.roll = 0;
+    this.dustSystem = new MyDustParticleSystem(scene);
   }
 
   // Updates the horse world position from the wagon transform.
@@ -130,6 +135,7 @@ export class MyWagon extends CGFobject {
     this._handleBaleInput(iface);
     this._updateCarriedBales();
     this._tickDropAnimators();
+    this._updateDust(dt);
   }
 
   // Updates forward speed from W/S input, braking, and passive friction.
@@ -163,6 +169,30 @@ export class MyWagon extends CGFobject {
     }
   }
 
+  // Updates dust particles.
+  _updateDust(dt) {
+    if (Math.abs(this.speed) > 4.0) {
+        // Increased spawn chance for more frequent dust
+        if (Math.random() < 0.7) {
+            const wx = BED_LENGTH * 0.35 * this.scale;
+            const wz = (BED_WIDTH * 0.5 + WHEEL_THICKNESS * 0.5 + 0.02) * this.scale;
+            const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+            
+            const toWorld = (lx, lz) => [
+                this.x + lx * cy + lz * sy,
+                this.z - lx * sy + lz * cy,
+            ];
+            
+            const [px1, pz1] = toWorld(-wx, wz);
+            this.dustSystem.spawn(px1, this.y + 0.3, pz1, this.speed, this.yaw);
+            
+            const [px2, pz2] = toWorld(-wx, -wz);
+            this.dustSystem.spawn(px2, this.y + 0.3, pz2, this.speed, this.yaw);
+        }
+    }
+    this.dustSystem.update(dt);
+  }
+
   // Moves the wagon using a bicycle/Ackermann steering approximation.
   _integrateMotion(dt) {
     const worldWheelbase = WHEELBASE * this.scale;
@@ -192,6 +222,14 @@ export class MyWagon extends CGFobject {
 
     let targetPitch = Math.atan2(hFront - hBack, 2 * halfWB);
     let targetRoll  = Math.atan2(hLeft  - hRight, 2 * halfWidth);
+    
+    // ── Add cornering roll ────────────────────────
+    const MAX_CORNER_ROLL = Math.PI / 75; 
+    // Only apply cornering lean when moving at max speed
+    if (Math.abs(this.speed) >= MAX_SPEED * 0.98) {
+        targetRoll += Math.sign(this.speed) * (this.steeringAngle / MAX_STEER) * MAX_CORNER_ROLL;
+    }
+
     if (targetPitch >  MAX_TILT) targetPitch =  MAX_TILT;
     if (targetPitch < -MAX_TILT) targetPitch = -MAX_TILT;
     if (targetRoll  >  MAX_TILT) targetRoll  =  MAX_TILT;
@@ -430,11 +468,15 @@ export class MyWagon extends CGFobject {
   display() {
     this.scene.pushMatrix();
     this.scene.translate(this.x, this.y, this.z);
-    this.scene.rotate(this.yaw,   0, 1, 0);
-    // Roll first (bank around forward axis), then pitch (nose-up around
-    // lateral axis). This order matches what a vehicle does on a sideslope:
-    // it leans along the slope, then noses up the gradient.
-    this.scene.rotate(this.roll,  1, 0, 0);
+    this.scene.rotate(this.yaw, 0, 1, 0);
+
+    // ── Apply Roll, Pitch & Prevent Clipping ──────────────────────────────────────
+    const wz = BED_WIDTH * 0.5 + WHEEL_THICKNESS * 0.5 + 0.02;
+    const liftY = Math.abs(wz * Math.sin(this.roll));
+    this.scene.translate(0, liftY, 0);
+
+    // Roll first (bank around forward axis), then pitch (nose-up around lateral axis).
+    this.scene.rotate(this.roll, 1, 0, 0);
     this.scene.rotate(this.pitch, 0, 0, 1);
     this.scene.scale(this.scale, this.scale, this.scale);
 
@@ -460,8 +502,11 @@ export class MyWagon extends CGFobject {
 
     this.scene.popMatrix();
 
-    // Horses use world transforms, so they draw outside the wagon's matrix.
+    // Horses use world transforms, so draw them outside the wagon's matrix.
     for (const h of this.horses) h.display();
+
+    // ── Draw Dust Particles ───────────────────────────────────────────────────
+    this.dustSystem.display();
   }
 
   // Draws the double-shaft tongue from the wagon pivot to horse hitch points.
