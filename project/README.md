@@ -75,7 +75,7 @@ http://localhost:5500/project/index.html
 
 ### Advanced / Bonus Features Implemented
 
-TODO.
+* **Advanced Pitch Physics**: the wagon orientation includes dynamic pitch adjustment based on acceleration and braking. The nose lifts slightly during acceleration and dips during braking, simulating the weight shift for a more realistic feel.
 
 ---
 
