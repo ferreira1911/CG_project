@@ -80,6 +80,7 @@ export class MyWagon extends CGFobject {
     this.horseAnimator = new MyHorseAnimator(this.horses[0], 0.3, 0.6);
 
     this.speed         = 0;
+    this.accel         = 0;
     this.steeringAngle = 0;
     this.pitch         = 0;  // around local +Z, nose-up positive
     this.roll          = 0;  // around local +X, right-side-down positive
@@ -140,20 +141,25 @@ export class MyWagon extends CGFobject {
 
   // Updates forward speed from W/S input, braking, and passive friction.
   _updateSpeed(dt, iface) {
+    const prevSpeed = this.speed;
+
     if (iface.isKeyPressed('KeyW')) {
       this.speed = Math.min(this.speed + ACCELERATION * dt, MAX_SPEED);
-      return;
-    }
-    if (iface.isKeyPressed('KeyS')) {
+    } else if (iface.isKeyPressed('KeyS')) {
       // Brake forward; never reverse manually. If knocked back (speed<0)
       // friction handles deceleration.
       if (this.speed > 0) this.speed = Math.max(this.speed - BRAKE * dt, 0);
       else if (this.speed < 0) this.speed = Math.min(this.speed + FRICTION * dt, 0);
-      return;
+    } else {
+      // Coast — friction pulls toward 0 from either side.
+      if (this.speed > 0) this.speed = Math.max(this.speed - FRICTION * dt, 0);
+      else if (this.speed < 0) this.speed = Math.min(this.speed + FRICTION * dt, 0);
     }
-    // Coast — friction pulls toward 0 from either side.
-    if (this.speed > 0) this.speed = Math.max(this.speed - FRICTION * dt, 0);
-    else if (this.speed < 0) this.speed = Math.min(this.speed + FRICTION * dt, 0);
+
+
+
+    this.accel = (this.speed - prevSpeed) / dt;
+    
   }
 
   // Updates the steering angle from A/D input and recentres it on release.
@@ -223,8 +229,15 @@ export class MyWagon extends CGFobject {
     let targetPitch = Math.atan2(hFront - hBack, 2 * halfWB);
     let targetRoll  = Math.atan2(hLeft  - hRight, 2 * halfWidth);
     
-    // ── Add cornering roll ────────────────────────
+    // ── Add dynamic weight shift (pitch & roll) ──────────────────
+    const MAX_ACCEL_PITCH = Math.PI / 80; 
+
+
     const MAX_CORNER_ROLL = Math.PI / 75; 
+
+    // nose of the wagon lifts on acceleration, and dives under braking.
+    targetPitch += (this.accel || 0) * (MAX_ACCEL_PITCH / BRAKE);
+
     // Only apply cornering lean when moving at max speed
     if (Math.abs(this.speed) >= MAX_SPEED * 0.98) {
         targetRoll += Math.sign(this.speed) * (this.steeringAngle / MAX_STEER) * MAX_CORNER_ROLL;
