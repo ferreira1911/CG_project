@@ -74,7 +74,7 @@ void main() {
     float pathBlend = smoothstep(0.18, 0.82, mask.r);
     vec4 texColor = mix(colorTerrain, colorPath, pathBlend);
 
-    // EXTREME FPS BOOST: Instead of 8 expensive per-fragment texture lookups to reconstruct
+    // Instead of 8 expensive per-fragment texture lookups to reconstruct
     // normals on the fly, we consume the highly accurate vertex-interpolated vNormal.
     vec3 terrainNormal = normalize(vNormal);
     
