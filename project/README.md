@@ -111,4 +111,4 @@ The DAT.gui panel also exposes inspection and tuning controls for scene visibili
 
 ## AI Use Declaration
 
-AI assistance was used as a development support tool to review the project against the statement, identify inconsistencies, improve code organization and comments, debug visual/gameplay issues, and help write this README. The implementation, integration, testing, and final decisions were reviewed and controlled by the group members.
+AI assistance was used as a development support tool to review the project against the guidelines, identify inconsistencies, design and write some more complex algorithms, improve code organization and comments, debug visual/gameplay issues, and help write this README. The implementation, integration, testing, and final decisions were reviewed and controlled by the group members.
