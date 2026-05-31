@@ -105,7 +105,6 @@ The DAT.gui panel also exposes inspection and tuning controls for scene visibili
 | Flower, rocks, and floor detail | [screenshots/delivery/project-t01g05-2.png](screenshots/delivery/project-t01g05-2.png) |
 | Wagon close-up | [screenshots/delivery/project-t01g05-3.png](screenshots/delivery/project-t01g05-3.png) |
 | Shader animation | [screenshots/delivery/project-t01g05-4.gif](screenshots/delivery/project-t01g05-4.gif) |
-| Gameplay / hay bale interaction | [screenshots/interaction/interaction_haybale.png](screenshots/interaction/interaction_haybale.png) |
 
 ---
 
