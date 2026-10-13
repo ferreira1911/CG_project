@@ -2,11 +2,7 @@
 
 ## CGRA 2025/2026 - Class T01 - Group 05
 
-| Name | Student Number |
-| --- | --- |
-| Gonçalo Ferreira | 202304562 |
-| João Santos | 202303908 |
-| João Furtado | 202305812 |
+**Authors:** Gonçalo Ferreira, João Santos and João Furtado.
 
 ---
 
@@ -99,15 +95,25 @@ The DAT.gui panel also exposes inspection and tuning controls for scene visibili
 
 ## Screenshots
 
-| Required View | File |
+### Scene overview
+
+![Wagon Rush scene overview](screenshots/delivery/project-t01g05-1.png)
+
+| Terrain and vegetation | Wagon close-up |
 | --- | --- |
-| Overall scene overview | [screenshots/delivery/project-t01g05-1.png](screenshots/delivery/project-t01g05-1.png) |
-| Flower, rocks, and floor detail | [screenshots/delivery/project-t01g05-2.png](screenshots/delivery/project-t01g05-2.png) |
-| Wagon close-up | [screenshots/delivery/project-t01g05-3.png](screenshots/delivery/project-t01g05-3.png) |
-| Shader animation | [screenshots/delivery/project-t01g05-4.gif](screenshots/delivery/project-t01g05-4.gif) |
+| ![Terrain, flowers and rocks](screenshots/delivery/project-t01g05-2.png) | ![Horse-drawn wagon](screenshots/delivery/project-t01g05-3.png) |
+
+### Animation
+
+![Wagon Rush shader animation](screenshots/delivery/project-t01g05-4.gif)
 
 ---
 
 ## AI Use Declaration
 
 AI assistance was used as a development support tool to review the project against the guidelines, identify inconsistencies, design and write some more complex algorithms, improve code organization and comments, debug visual/gameplay issues, and help write this README. The implementation, integration, testing, and final decisions were reviewed and controlled by the group members.
+
+
+## Libraries and resources
+
+Rendering uses FEUP's WebCGF framework and dat.GUI. The imported horse model and scene textures are included in `resources/`; original library and resource files are retained.

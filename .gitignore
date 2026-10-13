@@ -1,0 +1,11 @@
+# Local editor and operating system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local credentials and generated files
+.env
+.env.*
+*.log
+__pycache__/
